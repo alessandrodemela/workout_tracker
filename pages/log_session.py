@@ -6,20 +6,25 @@ from datetime import datetime
 conn = st.connection("gsheets", type=GSheetsConnection)
 SHEET_URL = st.secrets["connections"]["gsheets"]["spreadsheet"]
 
-# 1. LETTURA CACHEATA
-@st.cache_data(ttl=600)
-def get_exercise_list():
-    df_dim = conn.read(spreadsheet=SHEET_URL, worksheet="dim_exercises")
-    return sorted(df_dim["Exercise_Name"].unique().tolist())
+# --- REFRESH LOGIC ---
+if "refresh_counter" not in st.session_state:
+    st.session_state.refresh_counter = 0
 
-# 2. CONTROLLO REFRESH (Svuota la cache se abbiamo aggiunto un esercizio)
 if st.session_state.get("needs_refresh", False):
-    st.cache_data.clear()
+    st.session_state.refresh_counter += 1
     st.session_state.needs_refresh = False
 
+@st.cache_data(ttl=600)
+def get_exercise_list(counter):
+    # Se il counter è > 0, forziamo ttl=0 per questa lettura specifica
+    ttl_to_use = 0 if counter > 0 else 600
+    df_dim = conn.read(spreadsheet=SHEET_URL, worksheet="dim_exercises", ttl=ttl_to_use)
+    return sorted(df_dim["Exercise_Name"].unique().tolist())
+
 try:
-    available_exercises = get_exercise_list()
-except:
+    available_exercises = get_exercise_list(st.session_state.refresh_counter)
+except Exception as e:
+    st.error(f"⚠️ Error loading exercises: {e}")
     available_exercises = ["Please add exercises to Master DB first"]
 
 # --- STATE MANAGEMENT ---
@@ -47,12 +52,59 @@ workout_date = st.sidebar.date_input("Date", datetime.now())
 st.title("🏋️ Workout Session Log")
 st.subheader("Current Session Exercises")
 
+# --- CSS per le card degli esercizi ---
+st.markdown("""
+<style>
+    /* Card esercizio */
+    div[data-testid="stVerticalBlock"] > div.exercise-card {
+        border-left: 4px solid #FF4B4B;
+        background-color: rgba(255, 75, 75, 0.04);
+        border-radius: 0 8px 8px 0;
+        padding: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    /* Header esercizio */
+    .exercise-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0.3rem 0.5rem;
+        margin-bottom: 0.25rem;
+        background: linear-gradient(90deg, rgba(255,75,75,0.12) 0%, transparent 100%);
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: #FF4B4B;
+    }
+    /* Badge numero */
+    .exercise-badge {
+        background-color: #FF4B4B;
+        color: white;
+        padding: 2px 10px;
+        border-radius: 12px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        margin-right: 8px;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # --- INTERFACCIA DINAMICA ---
 for i, row in enumerate(st.session_state.workout_rows):
-    with st.container():
-        c1, c2, c3, c4, c5, c6 = st.columns([3, 1, 1, 1, 1, 0.5])
-        
+    # Header della card con numero e nome
+    exercise_label = row['ex'] if row['ex'] else "Select exercise..."
+    st.markdown(
+        f'<div class="exercise-header">'
+        f'<span><span class="exercise-badge">#{i+1}</span> {exercise_label}</span>'
+        f'</div>',
+        unsafe_allow_html=True
+    )
+    
+    with st.container(border=True):
         fid = st.session_state.form_id
+        
+        # Prima riga: Exercise Name + Delete
+        col_ex, col_del = st.columns([6, 0.5])
         
         # --- FIX SELECTBOX: Troviamo l'indice corretto ---
         try:
@@ -61,27 +113,29 @@ for i, row in enumerate(st.session_state.workout_rows):
             current_index = 0
 
         # Assegniamo la selectbox con l'indice dinamico
-        selected_ex = c1.selectbox(
+        selected_ex = col_ex.selectbox(
             "Exercise Name", 
             options=available_exercises, 
             index=current_index, 
-            key=f"ex_{fid}_{i}"
+            key=f"ex_{fid}_{i}",
+            label_visibility="collapsed"
         )
         # Aggiorniamo subito lo stato con il valore scelto
         st.session_state.workout_rows[i]['ex'] = selected_ex
         
-        # Resto dei campi
-        st.session_state.workout_rows[i]['kg'] = c2.number_input("Kg", value=int(row['kg']), step=1, key=f"kg_{fid}_{i}")
-        st.session_state.workout_rows[i]['sets'] = c3.text_input("Sets", value=row['sets'], key=f"sets_{fid}_{i}")
-        st.session_state.workout_rows[i]['reps'] = c4.text_input("Reps", value=row['reps'], key=f"reps_{fid}_{i}")
-        st.session_state.workout_rows[i]['rpe'] = c5.number_input("RPE", 1, 10, value=int(row['rpe']), key=f"rpe_{fid}_{i}")
-        
-        if c6.button("🗑️", key=f"del_{fid}_{i}"):
+        if col_del.button("🗑️", key=f"del_{fid}_{i}", help="Remove this exercise"):
             remove_exercise(i)
             st.session_state.form_id += 1
             st.rerun()
 
-st.button("➕ Add Another Exercise", on_click=add_exercise)
+        # Seconda riga: Kg, Sets, Reps, RPE
+        c_kg, c_sets, c_reps, c_rpe = st.columns(4)
+        st.session_state.workout_rows[i]['kg'] = c_kg.number_input("Kg 🏋️", value=int(row['kg']), step=1, key=f"kg_{fid}_{i}")
+        st.session_state.workout_rows[i]['sets'] = c_sets.text_input("Sets 📊", value=row['sets'], key=f"sets_{fid}_{i}")
+        st.session_state.workout_rows[i]['reps'] = c_reps.text_input("Reps 🔁", value=row['reps'], key=f"reps_{fid}_{i}")
+        st.session_state.workout_rows[i]['rpe'] = c_rpe.number_input("RPE 💪", 1, 10, value=int(row['rpe']), key=f"rpe_{fid}_{i}")
+
+st.button("➕ Add Another Exercise", on_click=add_exercise, type="secondary", use_container_width=True)
 
 st.divider()
 global_notes = st.text_area("Session Notes (Fatigue, Focus, Recovery)", key=f"notes_{st.session_state.form_id}")

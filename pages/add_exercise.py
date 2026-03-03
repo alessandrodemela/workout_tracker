@@ -64,5 +64,7 @@ if submitted:
 # Mostra il DB attuale sotto la maschera
 st.divider()
 st.write("### Current Exercise List")
-dim_data = conn.read(spreadsheet=SHEET_URL, worksheet="dim_exercises", ttl="10m")
+# Usiamo ttl=0 se abbiamo appena aggiunto qualcosa, altrimenti 10m
+current_ttl = 0 if st.session_state.get("needs_refresh", False) else "10m"
+dim_data = conn.read(spreadsheet=SHEET_URL, worksheet="dim_exercises", ttl=current_ttl)
 st.dataframe(dim_data, width='content')
