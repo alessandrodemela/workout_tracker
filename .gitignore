@@ -1,0 +1,14 @@
+# Secrets & credentials - DO NOT PUSH
+.streamlit/secrets.toml
+*.json
+
+# Python
+__pycache__/
+*.pyc
+
+# Excel database (local only)
+*.xlsx
+
+# OS
+.DS_Store
+Thumbs.db
