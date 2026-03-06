@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+pydantic
+gspread
+google-auth
+pandas
+python-dotenv
