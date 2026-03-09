@@ -1,6 +1,7 @@
 # Secrets & credentials - DO NOT PUSH
+# Instead of *.json (which blocks package.json), we specify the exact credentials file
+gym-performance-tracker-*.json
 .streamlit/secrets.toml
-*.json
 .env
 backend/.env
 
