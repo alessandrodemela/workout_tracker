@@ -7,10 +7,10 @@ from datetime import datetime
 
 app = FastAPI(title="Workout Tracker API")
 
-# Configure CORS for the frontend
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"], # Allow all for now, we can restrict later
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

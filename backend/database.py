@@ -6,17 +6,28 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import json
+
 SPREADSHEET_URL = os.getenv("SPREADSHEET_URL", "")
 CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "../gym-performance-tracker-489013-6dc15c8cd668.json")
+CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
 
 def get_gspread_client():
     scopes = [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive'
     ]
-    if not os.path.exists(CREDENTIALS_FILE):
-        raise Exception(f"Credentials file not found: {CREDENTIALS_FILE}")
-    credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
+    
+    if CREDENTIALS_JSON:
+        # Load from environment variable (useful for Render)
+        creds_dict = json.loads(CREDENTIALS_JSON)
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    else:
+        # Load from local file
+        if not os.path.exists(CREDENTIALS_FILE):
+            raise Exception(f"Credentials file not found: {CREDENTIALS_FILE}")
+        credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
+        
     gc = gspread.authorize(credentials)
     return gc
 

@@ -1,0 +1,44 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    body {
+        @apply bg-black text-white font-sans antialiased;
+    }
+
+    /* Remove scrollbar for a cleaner mobile look */
+    ::-webkit-scrollbar {
+        width: 0px;
+        background: transparent;
+    }
+}
+
+@layer components {
+    .btn-primary {
+        @apply w-full bg-red-600 hover:bg-red-500 text-white font-medium py-4 px-4 rounded-2xl transition-all duration-300 active:scale-[0.98] shadow-lg shadow-red-900/20;
+    }
+
+    .btn-secondary {
+        @apply w-full bg-zinc-900 hover:bg-zinc-800 text-zinc-400 font-medium py-4 px-4 rounded-2xl transition-all duration-300 active:scale-[0.98] border border-zinc-800;
+    }
+
+    .input-field {
+        @apply w-full bg-zinc-900 border border-zinc-800 rounded-2xl px-4 py-4 text-white focus:outline-none focus:ring-2 focus:ring-red-500/50 transition-all duration-300 placeholder:text-zinc-600;
+    }
+
+    .card-premium {
+        @apply bg-zinc-900/50 border border-zinc-900 rounded-[2rem] p-6 shadow-sm;
+    }
+}
+
+/* For hiding number input arrows */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}

@@ -50,6 +50,7 @@ TABLES = {
             "Session_Type",   # Tipologia sessione
             "Notes",          # Note libere
             "upload_processed_at", # Data di upload
+            "Week",           # Settimana dell'anno (ISO)
         ],
         "rows": 5000,
     },
@@ -63,6 +64,18 @@ TABLES = {
             "Bio_Notes",        # Note biomeccaniche / esecuzione
         ],
         "rows": 500,
+    },
+    "fact_functional_logs": {
+        "headers": [
+            "ID",                   # ID incrementale
+            "Exercise",             # "Functional Circuit"
+            "Date",                 # Data sessione
+            "Session_Type",         # Tipologia sessione
+            "Notes",                # Esercizi/Note
+            "upload_processed_at",  # Data upload
+            "Week",           # Settimana dell'anno (ISO)
+        ],
+        "rows": 2000,
     },
 }
 
