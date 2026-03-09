@@ -81,7 +81,7 @@ function History() {
                                 {log.RPE && (
                                     <div className="inline-flex self-start px-2 py-0.5 bg-zinc-900/80 rounded text-[9px] font-black tracking-widest text-zinc-500 uppercase border border-zinc-800">
                                         RPE {log.RPE}
-                                    </span >
+                                    </div>
                                 )}
                             </div>
                         </div>
