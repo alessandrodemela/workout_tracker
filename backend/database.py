@@ -12,7 +12,14 @@ SPREADSHEET_URL = os.getenv("SPREADSHEET_URL", "")
 CREDENTIALS_FILE = os.getenv("GOOGLE_CREDENTIALS_FILE", "../gym-performance-tracker-489013-6dc15c8cd668.json")
 CREDENTIALS_JSON = os.getenv("GOOGLE_CREDENTIALS_JSON")
 
+# Global client to avoid re-authorizing on every request
+_gc = None
+
 def get_gspread_client():
+    global _gc
+    if _gc is not None:
+        return _gc
+
     scopes = [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/drive'
@@ -28,8 +35,8 @@ def get_gspread_client():
             raise Exception(f"Credentials file not found: {CREDENTIALS_FILE}")
         credentials = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=scopes)
         
-    gc = gspread.authorize(credentials)
-    return gc
+    _gc = gspread.authorize(credentials)
+    return _gc
 
 def get_worksheet(sheet_name: str):
     gc = get_gspread_client()
@@ -68,3 +75,8 @@ def append_to_sheet_via_df(sheet_name: str, new_df: pd.DataFrame):
     # We replace everything with the new DF
     ws.clear()
     ws.update([updated_df.columns.values.tolist()] + updated_df.fillna('').values.tolist())
+
+def update_sheet_df(sheet_name: str, df: pd.DataFrame):
+    ws = get_worksheet(sheet_name)
+    ws.clear()
+    ws.update([df.columns.values.tolist()] + df.fillna('').values.tolist())
