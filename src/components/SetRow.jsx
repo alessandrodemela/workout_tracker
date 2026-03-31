@@ -12,22 +12,30 @@ export default function SetRow({ index, row, onRowChange, onRemove, onToggleComp
                 <div className="relative">
                     <input
                         type="number"
-                        step="0.5"
-                        value={row.kg}
-                        onChange={e => onRowChange('kg', e.target.value)}
+                        inputMode="numeric"
+                        value={row.reps}
+                        onChange={e => {
+                            const val = e.target.value.replace(/[^0-9]/g, '');
+                            onRowChange('reps', val);
+                        }}
                         className="set-input bg-[#171717] rounded-lg text-sm"
-                        placeholder="kg"
+                        placeholder="reps"
                         disabled={row.completed}
                     />
                 </div>
                 <div className="relative">
                     <input
-                        type="text"
-                        inputMode="numeric"
-                        value={row.reps}
-                        onChange={e => onRowChange('reps', e.target.value)}
+                        type="number"
+                        step="0.01"
+                        value={row.kg}
+                        onChange={e => {
+                            const val = e.target.value;
+                            if (val === '' || /^\d*\.?\d{0,2}$/.test(val)) {
+                                onRowChange('kg', val);
+                            }
+                        }}
                         className="set-input bg-[#171717] rounded-lg text-sm"
-                        placeholder="reps"
+                        placeholder="kg"
                         disabled={row.completed}
                     />
                 </div>

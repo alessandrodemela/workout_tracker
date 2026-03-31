@@ -308,7 +308,15 @@ export default function ActiveWorkout() {
             </div>
 
             {sessionType === 'Functional' ? (
-                <textarea className="input-field min-h-[200px]" placeholder="Circuit details..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
+                <div className="flex flex-col gap-4">
+                    <textarea className="input-field min-h-[200px]" placeholder="Circuit details..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
+                    <button 
+                        onClick={handleCancelWorkout}
+                        className="w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest hover:border-red-500/50 hover:text-red-500 transition-all flex items-center justify-center gap-2"
+                    >
+                        Discard Session
+                    </button>
+                </div>
             ) : (
                 <div className="flex flex-col gap-6">
                     {exercises.map((ex, idx) => (
@@ -342,6 +350,13 @@ export default function ActiveWorkout() {
                         </button>
                     )}
                     <textarea className="input-field min-h-[100px]" placeholder="Session Notes..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
+                    
+                    <button 
+                        onClick={handleCancelWorkout}
+                        className="mt-4 w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest hover:border-red-500/50 hover:text-red-500 transition-all flex items-center justify-center gap-2"
+                    >
+                        Discard Session
+                    </button>
                 </div>
             )}
 

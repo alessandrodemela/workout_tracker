@@ -53,8 +53,8 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
                 <div className="flex flex-col gap-2">
                     <div className="flex px-2 pb-1 text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">
                         <div className="w-6 text-center">Set</div>
-                        <div className="flex-1 text-center font-bold">KG</div>
                         <div className="flex-1 text-center font-bold">Reps</div>
+                        <div className="flex-1 text-center font-bold">KG</div>
                         <div className="w-[4.5rem]"></div>
                     </div>
 
