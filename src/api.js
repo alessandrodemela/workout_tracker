@@ -70,7 +70,13 @@ export const getExerciseHistory = async (exerciseName) => {
         Notes: log.notes
     }));
 
-    return { history: formattedHistory, pb };
+    const formattedPb = pb ? {
+        Kg: pb.kg,
+        Reps: pb.reps,
+        Date: pb.date,
+    } : null;
+
+    return { history: formattedHistory, pb: formattedPb };
 };
 
 export const getTemplates = async () => {
@@ -147,14 +153,14 @@ export const getWorkoutHistory = async () => {
 };
 
 export const saveWorkoutSession = async (session) => {
-    const { Date, Session_Type, Mesocycle, Notes, Exercises } = session;
+    const { Date: sessionDate, Session_Type, Mesocycle, Notes, Exercises } = session;
     
     // Calculate week number (or use current logic)
-    const dateObj = new Date(Date);
+    const dateObj = new Date(sessionDate);
     const weekNum = getWeekNumber(dateObj);
 
     const rows = Exercises.map(ex => ({
-        date: Date,
+        date: sessionDate,
         week: weekNum,
         session_type: Session_Type,
         mesocycle: Mesocycle,
@@ -175,14 +181,14 @@ export const saveWorkoutSession = async (session) => {
 };
 
 export const saveFunctionalSession = async (session) => {
-    const { Date, Session_Type, Exercise, Notes } = session;
-    const dateObj = new Date(Date);
+    const { Date: sessionDate, Session_Type, Exercise, Notes } = session;
+    const dateObj = new Date(sessionDate);
     const weekNum = getWeekNumber(dateObj);
 
     const { error } = await supabase
         .from('functional_logs')
         .insert([{
-            date: Date,
+            date: sessionDate,
             week: weekNum,
             session_type: Session_Type,
             exercise: Exercise || 'Functional Circuit',
@@ -254,8 +260,8 @@ export const fetcher = async (key) => {
     if (key.includes('/workout-history')) return getWorkoutHistory();
     if (key.includes('/history')) {
          const parts = key.split('/');
-         const exName = parts[parts.length - 2]; 
-         return getExerciseHistory(exName);
+         const exName = parts[parts.length - 1]; 
+         return getExerciseHistory(decodeURIComponent(exName));
     }
     throw new Error(`Unsupported SWR key: ${key}`);
 };

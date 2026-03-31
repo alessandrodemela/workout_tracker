@@ -5,25 +5,19 @@ import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save } from 'lucide-re
 import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
+import { useWorkout } from '../context/WorkoutContext';
 
 export default function ActiveWorkout() {
     const navigate = useNavigate();
     const { data: exercisesData, mutate: mutateExercises } = useSWR(`${API_URL}/exercises`, fetcher);
     const masterExercises = exercisesData?.exercises || [];
 
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [sessionType, setSessionType] = useState('Standard');
-    const [exercises, setExercises] = useState([]);
-    const [globalNotes, setGlobalNotes] = useState('');
+    const { 
+        isActive, date, setDate, sessionType, setSessionType, 
+        exercises, setExercises, globalNotes, setGlobalNotes, 
+        secondsElapsed, startWorkout, cancelWorkout, finishWorkout 
+    } = useWorkout();
     const [isSaving, setIsSaving] = useState(false);
-    const [secondsElapsed, setSecondsElapsed] = useState(0);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setSecondsElapsed(prev => prev + 1);
-        }, 1000);
-        return () => clearInterval(interval);
-    }, []);
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -45,12 +39,14 @@ export default function ActiveWorkout() {
     const [selectedExercise, setSelectedExercise] = useState('');
 
     useEffect(() => {
+        if (isActive) return;
+
         const stored = sessionStorage.getItem('templateExercises');
         if (stored && masterExercises.length > 0) {
             try {
                 const parsed = JSON.parse(stored);
                 setRawTemplate(parsed);
-                setSessionType(parsed[0]?.Split || 'Template');
+                const splitName = parsed[0]?.Split || 'Template';
 
                 // Check for missing exercises
                 const missing = parsed
@@ -60,6 +56,7 @@ export default function ActiveWorkout() {
                 const uniqueMissing = [...new Set(missing)];
 
                 if (uniqueMissing.length > 0) {
+                    setSessionType(splitName);
                     setUnresolvedItems(uniqueMissing);
                     // Initialize resolutions
                     const initialRes = {};
@@ -68,16 +65,16 @@ export default function ActiveWorkout() {
                     });
                     setResolutions(initialRes);
                 } else {
-                    initializeWorkout(parsed);
+                    initializeWorkout(parsed, {}, splitName);
                 }
             } catch (e) { console.error(e); }
         } else if (!stored) {
             // New custom workout
-            setSessionType('Standard');
+            startWorkout({ sessionType: 'Standard' });
         }
-    }, [masterExercises]);
+    }, [masterExercises, isActive]);
 
-    const initializeWorkout = (templateData, resMap = {}) => {
+    const initializeWorkout = (templateData, resMap = {}, splitName = null) => {
         const initialExercises = templateData
             .filter(te => te.Exercise_Name)
             .map(te => {
@@ -93,7 +90,11 @@ export default function ActiveWorkout() {
                     }))
                 };
             });
-        setExercises(initialExercises);
+        
+        startWorkout({ 
+            sessionType: splitName || sessionType, 
+            exercises: initialExercises 
+        });
         setUnresolvedItems([]);
     };
 
@@ -138,6 +139,7 @@ export default function ActiveWorkout() {
     const handleCancelWorkout = () => {
         if (window.confirm("Are you sure you want to cancel this workout? All progress will be lost.")) {
             sessionStorage.removeItem('templateExercises');
+            cancelWorkout();
             navigate('/home');
         }
     };
@@ -175,6 +177,7 @@ export default function ActiveWorkout() {
                 await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: globalNotes, Exercises: validRows });
             }
             sessionStorage.removeItem('templateExercises');
+            finishWorkout();
             navigate('/history');
         } catch (err) { 
             console.error(err);
@@ -270,7 +273,7 @@ export default function ActiveWorkout() {
         <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <button onClick={handleCancelWorkout} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
+                    <button onClick={() => navigate('/home')} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <div className="flex flex-col">

@@ -1,9 +1,10 @@
 // This file is fine, I will just add the plus button
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import { Search, ChevronRight, Activity, X, Plus } from 'lucide-react';
+import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle } from 'lucide-react';
 import { API_URL, fetcher, addExercise } from '../api';
 import PrimaryButton from '../components/PrimaryButton';
+import { useWorkout } from '../context/WorkoutContext';
 
 const EQUIPMENT_COLORS = {
     'Barbell': 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
@@ -22,6 +23,7 @@ const MUSCLE_TO_AREA_MAP = {
 };
 
 export default function ExerciseDatabase() {
+    const { isActive, addExercise: addExerciseToWorkout } = useWorkout();
     const { data: exData, error: exError, mutate } = useSWR(`${API_URL}/exercises`, fetcher);
     const { data: histData, error: histError } = useSWR(`${API_URL}/workout-history`, fetcher);
     const exercises = exData?.full_list || [];
@@ -39,6 +41,7 @@ export default function ExerciseDatabase() {
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
     const [selectedExercise, setSelectedExercise] = useState(null);
+    const [justAdded, setJustAdded] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [formData, setFormData] = useState({
@@ -85,6 +88,18 @@ export default function ExerciseDatabase() {
     };
 
     const { data: exerciseHistoryData } = useSWR(selectedExercise ? `${API_URL}/history/${encodeURIComponent(selectedExercise.Exercise_Name)}` : null, fetcher);
+
+    const handleSelectExercise = (ex) => {
+        setSelectedExercise(ex);
+        setJustAdded(false);
+    };
+
+    const handleAddToWorkout = () => {
+        if (!selectedExercise) return;
+        addExerciseToWorkout(selectedExercise.Exercise_Name);
+        setJustAdded(true);
+        setTimeout(() => setJustAdded(false), 2000);
+    };
 
     return (
         <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6 relative">
@@ -172,7 +187,7 @@ export default function ExerciseDatabase() {
                                 return (
                                     <button
                                         key={i}
-                                        onClick={() => setSelectedExercise(ex)}
+                                        onClick={() => handleSelectExercise(ex)}
                                         className="flex items-center justify-between p-4 bg-[#0A0A0A] border border-[#171717] rounded-3xl hover:border-[#262626] active:scale-95 transition-all w-full text-left group"
                                     >
                                         <div className="flex items-center gap-4">
@@ -239,6 +254,28 @@ export default function ExerciseDatabase() {
                                         </span>
                                     </div>
                                 </div>
+                            )}
+
+                            {isActive && (
+                                <button 
+                                    onClick={handleAddToWorkout}
+                                    disabled={justAdded}
+                                    className={`mt-2 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black transition-all ${
+                                        justAdded 
+                                            ? 'bg-[#D4FF00] text-black border border-[#D4FF00]'
+                                            : 'bg-[#171717] text-brand-500 border border-brand-500/20 hover:border-brand-500/50 hover:bg-[#262626]'
+                                    }`}
+                                >
+                                    {justAdded ? (
+                                        <>
+                                            <CheckCircle className="w-5 h-5" /> Added to Workout
+                                        </>
+                                    ) : (
+                                        <>
+                                            <PlusCircle className="w-5 h-5" /> Add to Active Workout
+                                        </>
+                                    )}
+                                </button>
                             )}
                         </div>
 
