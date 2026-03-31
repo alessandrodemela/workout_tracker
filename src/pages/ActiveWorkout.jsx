@@ -5,6 +5,7 @@ import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save } from 'lucide-re
 import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
+import RestTimer from '../components/RestTimer';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function ActiveWorkout() {
@@ -372,8 +373,9 @@ export default function ActiveWorkout() {
                     ) : (
                         <><Check className="w-5 h-5 mr-1" /> Complete Session</>
                     )}
-                </PrimaryButton>
+        </PrimaryButton>
             </div>
+            <RestTimer />
         </div>
     );
 }

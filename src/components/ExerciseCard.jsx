@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
 import SetRow from './SetRow';
+import { useWorkout } from '../context/WorkoutContext';
 
 export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
     const [collapsed, setCollapsed] = useState(false);
+    const { setIsRestTimerExpanded, restTimer } = useWorkout();
 
     const handleAddSet = () => {
         const lastSet = exercise.sets[exercise.sets.length - 1];
@@ -26,8 +28,13 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
 
     const handleToggleComplete = (setIndex) => {
         const newSets = [...exercise.sets];
-        newSets[setIndex].completed = !newSets[setIndex].completed;
+        const isNowCompleted = !newSets[setIndex].completed;
+        newSets[setIndex].completed = isNowCompleted;
         onUpdate({ ...exercise, sets: newSets });
+
+        if (isNowCompleted && !restTimer.isActive) {
+            setIsRestTimerExpanded(true);
+        }
     };
 
     return (

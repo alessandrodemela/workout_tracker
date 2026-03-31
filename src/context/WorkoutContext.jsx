@@ -9,6 +9,14 @@ export function WorkoutProvider({ children }) {
     const [exercises, setExercises] = useState([]);
     const [globalNotes, setGlobalNotes] = useState('');
     const [secondsElapsed, setSecondsElapsed] = useState(0);
+    const [restTimer, setRestTimer] = useState({ isActive: false, secondsRemaining: 0, duration: 0 });
+    const [isRestTimerExpanded, setIsRestTimerExpanded] = useState(false);
+
+    useEffect(() => {
+        if (isActive && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, [isActive]);
 
     useEffect(() => {
         let interval;
@@ -19,6 +27,82 @@ export function WorkoutProvider({ children }) {
         }
         return () => clearInterval(interval);
     }, [isActive]);
+
+    const playBeep = () => {
+        try {
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const oscillator = audioCtx.createOscillator();
+            const gainNode = audioCtx.createGain();
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+            gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+
+            oscillator.start();
+            oscillator.stop(audioCtx.currentTime + 0.5);
+        } catch (e) {
+            console.error("Audio context failed", e);
+        }
+    };
+
+    const showNotification = () => {
+        if (Notification.permission === 'granted') {
+            new Notification('Rest Timer Finished!', {
+                body: 'Time to start your next set!',
+                icon: '/logo192.png' // Adjust if needed
+            });
+        }
+    };
+
+    useEffect(() => {
+        let interval;
+        if (restTimer.isActive && restTimer.secondsRemaining > 0) {
+            interval = setInterval(() => {
+                setRestTimer(prev => {
+                    const nextValue = Math.max(0, prev.secondsRemaining - 1);
+                    
+                    if (nextValue === 0 && prev.isActive) {
+                        playBeep();
+                        showNotification();
+                    }
+
+                    return {
+                        ...prev,
+                        secondsRemaining: nextValue,
+                        isActive: nextValue > 0
+                    };
+                });
+            }, 1000);
+        }
+        return () => clearInterval(interval);
+    }, [restTimer.isActive, restTimer.secondsRemaining]);
+
+    const startRestTimer = (seconds) => {
+        setRestTimer({
+            isActive: true,
+            secondsRemaining: seconds,
+            duration: seconds
+        });
+    };
+
+    const stopRestTimer = () => {
+        setRestTimer({
+            isActive: false,
+            secondsRemaining: 0,
+            duration: 0
+        });
+    };
+
+    const addRestTime = (seconds) => {
+        setRestTimer(prev => ({
+            ...prev,
+            secondsRemaining: prev.secondsRemaining + seconds
+        }));
+    };
 
     const startWorkout = (initialData = {}) => {
         setDate(initialData.date || new Date().toISOString().split('T')[0]);
@@ -66,6 +150,12 @@ export function WorkoutProvider({ children }) {
             setGlobalNotes,
             secondsElapsed,
             setSecondsElapsed,
+            restTimer,
+            startRestTimer,
+            stopRestTimer,
+            addRestTime,
+            isRestTimerExpanded,
+            setIsRestTimerExpanded,
             startWorkout,
             cancelWorkout,
             finishWorkout
