@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save } from 'lucide-react';
-import { API_URL, fetcher } from '../api';
+import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
 
@@ -109,11 +109,7 @@ export default function ActiveWorkout() {
             });
 
             if (Object.keys(mappings).length > 0) {
-                await fetch(`${API_URL}/templates/map-exercises`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(mappings)
-                });
+                await mapTemplateExercises(mappings);
             }
 
             // 2. Process 'new' exercises by registering them
@@ -127,11 +123,7 @@ export default function ActiveWorkout() {
                 }));
 
             if (newExercises.length > 0) {
-                await fetch(`${API_URL}/exercises/bulk`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(newExercises)
-                });
+                await bulkAddExercises(newExercises);
                 await mutateExercises();
             }
 
@@ -177,16 +169,17 @@ export default function ActiveWorkout() {
         }
 
         try {
-            const res = await fetch(`${API_URL}${sessionType === 'Functional' ? '/functional-session' : '/workout-session'}`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ Date: date, Session_Type: sessionType, Exercises: validRows, Notes: globalNotes })
-            });
-            if (res.ok) {
-                sessionStorage.removeItem('templateExercises');
-                navigate('/history');
-            } else alert('Failed to save');
-        } catch (err) { alert('Error saving'); }
+            if (sessionType === 'Functional') {
+                await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes });
+            } else {
+                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: globalNotes, Exercises: validRows });
+            }
+            sessionStorage.removeItem('templateExercises');
+            navigate('/history');
+        } catch (err) { 
+            console.error(err);
+            alert('Error saving session'); 
+        }
         finally { setIsSaving(false); }
     };
 

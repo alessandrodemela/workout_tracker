@@ -122,7 +122,12 @@ export default function History() {
         return h > 0 ? `${h}h ${m}m` : `${m}m`;
     };
 
-    if (error) return <div className="p-6 text-brand-500 font-bold text-center">Connection error.</div>;
+    if (error) return (
+        <div className="p-6 text-brand-500 font-bold text-center">
+            <p>Connection error.</p>
+            <p className="text-[10px] opacity-50 mt-2 font-mono uppercase">{error?.message || JSON.stringify(error)}</p>
+        </div>
+    );
 
     return (
         <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6 px-6">

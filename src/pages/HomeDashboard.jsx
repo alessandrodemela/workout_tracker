@@ -8,8 +8,17 @@ import CalendarWidget from '../components/CalendarWidget';
 export default function HomeDashboard() {
     const navigate = useNavigate();
 
-    const { data: templatesData } = useSWR(`${API_URL}/templates`, fetcher);
-    const { data: historyData } = useSWR(`${API_URL}/workout-history`, fetcher);
+    const { data: templatesData, error: templatesError } = useSWR(`${API_URL}/templates`, fetcher);
+    const { data: historyData, error: historyError } = useSWR(`${API_URL}/workout-history`, fetcher);
+
+    if (templatesError || historyError) return (
+        <div className="p-12 text-[#A3A3A3] text-center font-bold flex flex-col gap-2">
+            <span>Error loading dashboard</span>
+            <span className="text-[10px] font-mono opacity-50 uppercase">
+                {templatesError?.message || historyError?.message || 'Check your internet or Supabase project status'}
+            </span>
+        </div>
+    );
 
     const templates = templatesData?.templates || [];
     const workoutDates = [

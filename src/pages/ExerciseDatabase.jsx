@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { Search, ChevronRight, Activity, X, Plus } from 'lucide-react';
-import { API_URL, fetcher } from '../api';
+import { API_URL, fetcher, addExercise } from '../api';
 import PrimaryButton from '../components/PrimaryButton';
 
 const EQUIPMENT_COLORS = {
@@ -22,10 +22,19 @@ const MUSCLE_TO_AREA_MAP = {
 };
 
 export default function ExerciseDatabase() {
-    const { data: exData, mutate } = useSWR(`${API_URL}/exercises`, fetcher);
-    const { data: histData } = useSWR(`${API_URL}/workout-history`, fetcher);
+    const { data: exData, error: exError, mutate } = useSWR(`${API_URL}/exercises`, fetcher);
+    const { data: histData, error: histError } = useSWR(`${API_URL}/workout-history`, fetcher);
     const exercises = exData?.full_list || [];
     const workouts = histData?.workouts || [];
+
+    if (exError || histError) return (
+        <div className="p-6 text-brand-500 font-bold text-center">
+            <p>Database connection failed.</p>
+            <p className="text-[10px] opacity-50 mt-2 font-mono uppercase">
+                {exError?.message || histError?.message || 'Check your Supabase credentials'}
+            </p>
+        </div>
+    );
 
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -67,19 +76,15 @@ export default function ExerciseDatabase() {
 
         setIsSaving(true);
         try {
-            const res = await fetch(`${API_URL}/exercises`, {
-                method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData)
-            });
-            if (res.ok) {
-                setFormData({ Exercise_Name: '', Target_Muscle: '', Target_Area: '', Equipment: '', Notes: '' });
-                setIsAdding(false);
-                mutate();
-            } else alert('Failed to add exercise');
+            await addExercise(formData);
+            setFormData({ Exercise_Name: '', Target_Muscle: '', Target_Area: '', Equipment: '', Notes: '' });
+            setIsAdding(false);
+            mutate();
         } catch (err) { alert('Error saving exercise'); }
         finally { setIsSaving(false); }
     };
 
-    const { data: exerciseHistoryData } = useSWR(selectedExercise ? `${API_URL}/exercises/${encodeURIComponent(selectedExercise.Exercise_Name)}/history` : null, fetcher);
+    const { data: exerciseHistoryData } = useSWR(selectedExercise ? `${API_URL}/history/${encodeURIComponent(selectedExercise.Exercise_Name)}` : null, fetcher);
 
     return (
         <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6 relative">

@@ -5,25 +5,18 @@ import { checkHealth } from '../api';
 
 export default function LandingScreen() {
     const navigate = useNavigate();
-    const [status, setStatus] = useState('Connecting to server...');
+    const [status, setStatus] = useState('Starting App...');
 
     useEffect(() => {
         let mounted = true;
-        const pingBackend = async () => {
-            let isOnline = false;
-            while (!isOnline && mounted) {
-                isOnline = await checkHealth();
-                if (isOnline) {
-                    if (mounted) {
-                        setStatus('Connected!');
-                        setTimeout(() => navigate('/home'), 500);
-                    }
-                } else {
-                    await new Promise(r => setTimeout(r, 2000));
-                }
-            }
+        const prepareApp = async () => {
+            // Give a short branding moment, then go!
+            // No need to wait for a backend boot that doesn't exist anymore.
+            setTimeout(() => {
+                if (mounted) navigate('/home');
+            }, 1000);
         };
-        pingBackend();
+        prepareApp();
         return () => { mounted = false; };
     }, [navigate]);
 
