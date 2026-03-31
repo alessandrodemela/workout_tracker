@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { useEffect } from 'react';
 
 import LandingScreen from './pages/LandingScreen.jsx';
 import HomeDashboard from './pages/HomeDashboard.jsx';
@@ -13,6 +14,21 @@ import ResumeWorkoutBanner from './components/ResumeWorkoutBanner.jsx';
 function AppContent() {
     const location = useLocation();
     const { isActive } = useWorkout();
+
+    useEffect(() => {
+        // App Simulation: Neutralize browser back button
+        const handlePopState = () => {
+            // Every time the user hits "back", we push the current page again
+            // effectively jamming the back button to stay on the current app view
+            window.history.pushState(null, '', window.location.pathname);
+        };
+
+        // Trap the initial load
+        window.history.pushState(null, '', window.location.pathname);
+        
+        window.addEventListener('popstate', handlePopState);
+        return () => window.removeEventListener('popstate', handlePopState);
+    }, [location.pathname]); // Update trap whenever we move page via buttons
 
     return (
         <div className="min-h-screen flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30">

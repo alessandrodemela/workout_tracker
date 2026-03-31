@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save } from 'lucide-react';
 import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
@@ -18,6 +18,7 @@ export default function ActiveWorkout() {
         secondsElapsed, startWorkout, cancelWorkout, finishWorkout 
     } = useWorkout();
     const [isSaving, setIsSaving] = useState(false);
+    const [isSaved, setIsSaved] = useState(false);
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -176,14 +177,22 @@ export default function ActiveWorkout() {
             } else {
                 await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: globalNotes, Exercises: validRows });
             }
-            sessionStorage.removeItem('templateExercises');
-            finishWorkout();
-            navigate('/history');
+            
+            // Critical UX Fix: Invalidate history cache and show success briefly
+            setIsSaving(false);
+            setIsSaved(true);
+            await mutate(`${API_URL}/workout-history`);
+            
+            setTimeout(() => {
+                sessionStorage.removeItem('templateExercises');
+                finishWorkout();
+                navigate('/history');
+            }, 1500);
         } catch (err) { 
             console.error(err);
+            setIsSaving(false);
             alert('Error saving session'); 
         }
-        finally { setIsSaving(false); }
     };
 
     // UI: Resolution Screen
@@ -337,8 +346,17 @@ export default function ActiveWorkout() {
             )}
 
             <div className="fixed bottom-24 left-6 right-6 z-40 max-w-lg mx-auto">
-                <PrimaryButton onClick={handleFinishWorkout} loading={isSaving} className="py-5 shadow-2xl shadow-brand-900/20">
-                    <Check className="w-5 h-5 mr-1" /> Complete Session
+                <PrimaryButton 
+                    onClick={handleFinishWorkout} 
+                    loading={isSaving} 
+                    className={`py-5 shadow-2xl transition-all duration-300 ${isSaved ? 'bg-green-500 text-white' : 'shadow-brand-900/20'}`}
+                    disabled={isSaved}
+                >
+                    {isSaved ? (
+                        <><Check className="w-5 h-5 mr-1" /> Session Saved!</>
+                    ) : (
+                        <><Check className="w-5 h-5 mr-1" /> Complete Session</>
+                    )}
                 </PrimaryButton>
             </div>
         </div>
