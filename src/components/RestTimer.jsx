@@ -12,7 +12,7 @@ export default function RestTimer() {
     };
 
     const presets = [
-        { label: '30s', value: 5 },
+        { label: '30s', value: 30 },
         { label: '1m', value: 60 },
         { label: '90s', value: 90 },
         { label: '2m', value: 120 },
