@@ -60,7 +60,14 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center gap-3">
                             <button onClick={() => updateConfig('prepareTime', config.prepareTime - 5)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Minus className="w-4 h-4" /></button>
                             <div className="w-14 flex items-baseline justify-center">
-                                <input type="number" value={config.prepareTime || ''} onChange={(e) => updateConfig('prepareTime', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" />
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={config.prepareTime || ''} 
+                                    onChange={(e) => updateConfig('prepareTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
+                                />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
                             </div>
                             <button onClick={() => updateConfig('prepareTime', config.prepareTime + 5)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>
@@ -81,7 +88,14 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center gap-3">
                             <button onClick={() => updateConfig('workTime', config.workTime - 5)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Minus className="w-4 h-4" /></button>
                             <div className="w-14 flex items-baseline justify-center">
-                                <input type="number" value={config.workTime || ''} onChange={(e) => updateConfig('workTime', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" />
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={config.workTime || ''} 
+                                    onChange={(e) => updateConfig('workTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
+                                />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
                             </div>
                             <button onClick={() => updateConfig('workTime', config.workTime + 5)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>
@@ -102,7 +116,14 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center gap-3">
                             <button onClick={() => updateConfig('restTime', config.restTime - 5)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Minus className="w-4 h-4" /></button>
                             <div className="w-14 flex items-baseline justify-center">
-                                <input type="number" value={config.restTime || ''} onChange={(e) => updateConfig('restTime', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" />
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={config.restTime || ''} 
+                                    onChange={(e) => updateConfig('restTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
+                                />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
                             </div>
                             <button onClick={() => updateConfig('restTime', config.restTime + 5)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>
@@ -123,7 +144,14 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center gap-3">
                             <button onClick={() => updateConfig('rounds', config.rounds - 1)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Minus className="w-4 h-4" /></button>
                             <div className="w-14 flex items-center justify-center">
-                                <input type="number" value={config.rounds || ''} onChange={(e) => updateConfig('rounds', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" />
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={config.rounds || ''} 
+                                    onChange={(e) => updateConfig('rounds', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
+                                />
                             </div>
                             <button onClick={() => updateConfig('rounds', config.rounds + 1)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>
                         </div>
@@ -143,7 +171,14 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center gap-3">
                             <button onClick={() => updateConfig('cycles', config.cycles - 1)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Minus className="w-4 h-4" /></button>
                             <div className="w-14 flex items-center justify-center">
-                                <input type="number" value={config.cycles || ''} onChange={(e) => updateConfig('cycles', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" />
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={config.cycles || ''} 
+                                    onChange={(e) => updateConfig('cycles', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
+                                />
                             </div>
                             <button onClick={() => updateConfig('cycles', config.cycles + 1)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>
                         </div>
@@ -163,7 +198,14 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center gap-3">
                             <button onClick={() => updateConfig('cycleRestTime', config.cycleRestTime - 10)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Minus className="w-4 h-4" /></button>
                             <div className="w-14 flex items-baseline justify-center">
-                                <input type="number" value={config.cycleRestTime || ''} onChange={(e) => updateConfig('cycleRestTime', parseInt(e.target.value) || 0)} className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" />
+                                <input 
+                                    type="number" 
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={config.cycleRestTime || ''} 
+                                    onChange={(e) => updateConfig('cycleRestTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
+                                />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
                             </div>
                             <button onClick={() => updateConfig('cycleRestTime', config.cycleRestTime + 10)} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>

@@ -26,9 +26,20 @@ export const TimerProvider = ({ children }) => {
         setConfig(prev => ({ ...prev, [key]: Math.max(0, value) }));
     };
 
+    const audioContextRef = React.useRef(null);
+
     const playBeep = (freq = 880, type = 'sine', duration = 0.5) => {
         try {
-            const context = new (window.AudioContext || window.webkitAudioContext)();
+            if (!audioContextRef.current) {
+                audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            const context = audioContextRef.current;
+            
+            // Optimization: Always try to resume context (user gesture might have just happened)
+            if (context.state === 'suspended') {
+                context.resume();
+            }
+
             const oscillator = context.createOscillator();
             const gain = context.createGain();
             oscillator.connect(gain);
@@ -80,6 +91,7 @@ export const TimerProvider = ({ children }) => {
     };
 
     const startTimer = () => {
+        playBeep(440, 'sine', 0.001); // Unlock audio context on user gesture
         setIsConfiguring(false);
         setPhase('Prepare');
         setTimeLeft(config.prepareTime);
@@ -89,7 +101,10 @@ export const TimerProvider = ({ children }) => {
     };
 
     const pauseTimer = () => setIsActive(false);
-    const resumeTimer = () => setIsActive(true);
+    const resumeTimer = () => {
+        playBeep(440, 'sine', 0.001); // Re-unlock on resume
+        setIsActive(true);
+    };
     const stopTimer = () => {
         if (phase !== 'Idle' && phase !== 'Done') {
             const confirmed = window.confirm("Are you sure you want to stop this circuit? All progress will be lost.");
