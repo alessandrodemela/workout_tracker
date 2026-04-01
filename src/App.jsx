@@ -34,7 +34,7 @@ function AppContent() {
     return (
         <div className="h-dvh flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30 overflow-hidden">
             {/* Scrollable page content — sits above the fixed nav */}
-            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col ${showNav ? 'pb-24' : ''}`}>
+            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col ${showNav ? 'pb-[calc(env(safe-area-inset-bottom,20px)+96px)]' : 'pb-0'}`}>
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />
@@ -50,7 +50,7 @@ function AppContent() {
             </main>
 
             {/* Floating banners above nav */}
-            <div className="fixed bottom-[72px] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
+            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,20px)+84px)] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
                 {isActive && location.pathname !== '/workout' && !activeTimerMode && <ResumeWorkoutBanner />}
                 {isTimerActive && !activeTimerMode && <ResumeTimerBanner />}
                 {isTimerActive && activeTimerMode && location.pathname !== '/conditioning' && <ResumeTimerBanner />}
