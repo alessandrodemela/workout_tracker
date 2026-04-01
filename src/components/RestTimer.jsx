@@ -77,7 +77,7 @@ export default function RestTimer() {
                 {/* Controls */}
                 <div className="flex flex-col gap-3">
                     {!restTimer.isActive ? (
-                        <div className="grid grid-cols-5 gap-2">
+                        <div className="flex flex-col gap-2">
                             {presets.map(p => (
                                 <button
                                     key={p.value}
@@ -85,25 +85,26 @@ export default function RestTimer() {
                                         startRestTimer(p.value);
                                         setIsRestTimerExpanded(true);
                                     }}
-                                    className="py-2.5 bg-[#171717] rounded-xl text-xs font-bold text-white border border-[#262626] hover:bg-brand-500 hover:text-black hover:border-brand-500 transition-all"
+                                    className="py-4 bg-[#171717] rounded-2xl text-sm font-black text-white border border-[#262626] hover:bg-brand-500 hover:text-black hover:border-brand-500 transition-all flex items-center justify-center gap-3 group"
                                 >
-                                    {p.label}
+                                    <Timer className="w-4 h-4 text-brand-500 group-hover:text-black" />
+                                    {p.label} Rest
                                 </button>
                             ))}
                         </div>
                     ) : (
-                        <div className="flex gap-2">
+                        <div className="flex flex-col gap-2">
                             <button
                                 onClick={() => addRestTime(30)}
-                                className="flex-1 py-3 bg-[#171717] rounded-2xl text-xs font-bold text-white border border-[#262626] flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-brand-500 text-black rounded-2xl text-sm font-black border border-brand-500 flex items-center justify-center gap-2 shadow-[0_0_20px_rgba(212,255,0,0.2)] active:scale-95 transition-all"
                             >
-                                <Plus className="w-4 h-4 text-brand-500" /> 30s
+                                <Plus className="w-5 h-5 fill-black" /> Add 30s
                             </button>
                             <button
                                 onClick={stopRestTimer}
-                                className="flex-1 py-3 bg-red-500/10 rounded-2xl text-xs font-bold text-red-500 border border-red-500/20 flex items-center justify-center gap-2"
+                                className="w-full py-4 bg-[#171717] rounded-2xl text-sm font-black text-red-500 border border-red-500/20 flex items-center justify-center gap-2 hover:bg-red-500/10 active:scale-95 transition-all"
                             >
-                                <SkipForward className="w-4 h-4" /> Skip
+                                <SkipForward className="w-5 h-5" /> Skip Rest
                             </button>
                         </div>
                     )}

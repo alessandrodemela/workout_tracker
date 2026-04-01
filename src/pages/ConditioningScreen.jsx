@@ -34,11 +34,9 @@ export default function ConditioningScreen() {
         <div className="flex flex-col gap-6 animate-fade-in pt-6 min-h-screen pb-32">
             {!activeTimerMode ? (
                 <>
-                    <div className="flex justify-between items-end">
-                        <div className="flex flex-col">
-                            <span className="text-xs font-bold text-[#A3A3A3] uppercase tracking-widest pl-1 mb-1">Functional</span>
-                            <h1 className="text-4xl font-black tracking-tight text-white">Timers</h1>
-                        </div>
+                    <div className="flex flex-col">
+                        <h1 className="text-3xl font-black tracking-tight text-white">Timers</h1>
+                        <p className="text-[#A3A3A3] text-sm pl-0.5 capitalize">Functional circuits</p>
                     </div>
 
                     <div className="flex flex-col gap-4">
@@ -64,8 +62,8 @@ export default function ConditioningScreen() {
             ) : (
                 <>
                     {activeTimerMode === 'circuit' && (
-                        <ConditioningTimer 
-                            onClose={() => setActiveTimerMode(null)} 
+                        <ConditioningTimer
+                            onClose={() => setActiveTimerMode(null)}
                         />
                     )}
                 </>

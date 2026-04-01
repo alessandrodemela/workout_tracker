@@ -26,27 +26,28 @@ export const TimerProvider = ({ children }) => {
         setConfig(prev => ({ ...prev, [key]: Math.max(0, value) }));
     };
 
-    const playBeep = () => {
+    const playBeep = (freq = 880, type = 'sine', duration = 0.5) => {
         try {
             const context = new (window.AudioContext || window.webkitAudioContext)();
             const oscillator = context.createOscillator();
             const gain = context.createGain();
             oscillator.connect(gain);
             gain.connect(context.destination);
-            oscillator.type = 'sine';
-            oscillator.frequency.value = 880;
+            oscillator.type = type;
+            oscillator.frequency.value = freq;
             gain.gain.setValueAtTime(0.1, context.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.5);
+            gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
             oscillator.start(context.currentTime);
-            oscillator.stop(context.currentTime + 0.5);
-        } catch (err) {}
+            oscillator.stop(context.currentTime + duration);
+        } catch (err) { }
     };
 
     const handleNextPhase = () => {
         if (phase === 'Idle' || phase === 'Done') return;
-        
-        playBeep();
-        
+
+        // Final phase completion beep (higher pitch)
+        playBeep(880, 'sine', 0.8);
+
         if (phase === 'Prepare') {
             setPhase('Work');
             setTimeLeft(config.workTime);
@@ -90,6 +91,10 @@ export const TimerProvider = ({ children }) => {
     const pauseTimer = () => setIsActive(false);
     const resumeTimer = () => setIsActive(true);
     const stopTimer = () => {
+        if (phase !== 'Idle' && phase !== 'Done') {
+            const confirmed = window.confirm("Are you sure you want to stop this circuit? All progress will be lost.");
+            if (!confirmed) return;
+        }
         setIsActive(false);
         setPhase('Idle');
         setIsConfiguring(true);
@@ -99,7 +104,13 @@ export const TimerProvider = ({ children }) => {
         let interval;
         if (isActive && timeLeft > 0) {
             interval = setInterval(() => {
-                setTimeLeft(prev => prev - 1);
+                setTimeLeft(prev => {
+                    const next = prev - 1;
+                    if (next > 0 && next <= 3) {
+                        playBeep(440, 'sine', 0.2); // Low frequency for countdown
+                    }
+                    return next;
+                });
             }, 1000);
         } else if (isActive && timeLeft === 0) {
             handleNextPhase();
