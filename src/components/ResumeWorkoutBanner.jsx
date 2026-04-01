@@ -1,11 +1,17 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Play } from 'lucide-react';
+import { Play, Timer } from 'lucide-react';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function ResumeWorkoutBanner() {
     const navigate = useNavigate();
-    const { secondsElapsed } = useWorkout();
+    const { secondsElapsed, restTimer } = useWorkout();
+
+    const formatTime = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s < 10 ? '0' + s : s}`;
+    };
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -31,8 +37,27 @@ export default function ResumeWorkoutBanner() {
                     <span className="text-xs font-bold text-[#A3A3A3]">Tap to return</span>
                 </div>
             </div>
-            <div className="text-xl font-black text-brand-500 tabular-nums pr-2 group-hover:text-brand-400 transition-colors">
-                {formatDuration(secondsElapsed)}
+            <div className="flex items-center gap-4">
+                <div className="flex flex-col items-end">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-500">Duration</span>
+                    <span className="text-xl font-black text-white tabular-nums group-hover:text-brand-400 transition-colors">
+                        {formatDuration(secondsElapsed)}
+                    </span>
+                </div>
+                {restTimer.isActive && (
+                    <>
+                        <div className="w-px h-8 bg-[#262626]" />
+                        <div className="flex flex-col items-start min-w-[60px]">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-blue-400">Rest</span>
+                            <div className="flex items-center gap-1.5">
+                                <Timer className="w-3.5 h-3.5 text-blue-400 animate-pulse" />
+                                <span className="text-xl font-black text-white tabular-nums">
+                                    {formatTime(restTimer.secondsRemaining)}
+                                </span>
+                            </div>
+                        </div>
+                    </>
+                )}
             </div>
         </button>
     );

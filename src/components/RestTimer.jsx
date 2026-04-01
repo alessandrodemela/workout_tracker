@@ -16,8 +16,10 @@ export default function RestTimer() {
         { label: '1m', value: 60 },
         { label: '90s', value: 90 },
         { label: '2m', value: 120 },
-        { label: '3m', value: 180 },
     ];
+
+    const [customValue, setCustomValue] = useState('180');
+    const [isCustom, setIsCustom] = useState(false);
 
     if (!isRestTimerExpanded) {
         return (
@@ -91,6 +93,41 @@ export default function RestTimer() {
                                     {p.label} Rest
                                 </button>
                             ))}
+                            
+                            {!isCustom ? (
+                                <button
+                                    onClick={() => setIsCustom(true)}
+                                    className="py-4 bg-[#171717] rounded-2xl text-sm font-black text-[#A3A3A3] border border-[#262626] border-dashed hover:border-brand-500 hover:text-brand-500 transition-all flex items-center justify-center gap-3"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                    Custom Rest
+                                </button>
+                            ) : (
+                                <div className="flex items-center gap-2 animate-fade-in">
+                                    <div className="flex-1 bg-[#171717] rounded-2xl border border-brand-500/50 flex items-center px-4 py-3">
+                                        <input 
+                                            type="number" 
+                                            inputMode="numeric"
+                                            value={customValue}
+                                            onChange={(e) => setCustomValue(e.target.value.replace(/\D/g, ''))}
+                                            className="bg-transparent text-white font-black text-base w-full focus:outline-none"
+                                            placeholder="Seconds"
+                                            autoFocus
+                                        />
+                                        <span className="text-brand-500 font-bold text-xs uppercase ml-2">sec</span>
+                                    </div>
+                                    <button
+                                        onClick={() => {
+                                            const val = parseInt(customValue);
+                                            if (!isNaN(val) && val > 0) startRestTimer(val);
+                                            setIsCustom(false);
+                                        }}
+                                        className="bg-brand-500 text-black p-4 rounded-2xl font-black text-sm uppercase transition-all active:scale-95"
+                                    >
+                                        Go
+                                    </button>
+                                </div>
+                            )}
                         </div>
                     ) : (
                         <div className="flex flex-col gap-2">

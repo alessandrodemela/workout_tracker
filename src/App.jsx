@@ -45,7 +45,7 @@ function AppContent() {
                 </Routes>
             </main>
 
-            <div className="fixed bottom-[104px] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
+            <div className="fixed bottom-[120px] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
                 {isActive && location.pathname !== '/workout' && <ResumeWorkoutBanner />}
                 {isTimerActive && !activeTimerMode && <ResumeTimerBanner />}
                 {isTimerActive && activeTimerMode && location.pathname !== '/conditioning' && <ResumeTimerBanner />}

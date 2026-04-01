@@ -30,7 +30,7 @@ export function WorkoutProvider({ children }) {
 
     const audioContextRef = useRef(null);
 
-    const playBeep = () => {
+    const playBeep = (freq = 880, duration = 0.5) => {
         try {
             if (!audioContextRef.current) {
                 audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -46,11 +46,11 @@ export function WorkoutProvider({ children }) {
             oscillator.connect(gainNode);
             gainNode.connect(audioCtx.destination);
             oscillator.type = 'sine';
-            oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+            oscillator.frequency.setValueAtTime(freq, audioCtx.currentTime);
             gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
-            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
             oscillator.start();
-            oscillator.stop(audioCtx.currentTime + 0.5);
+            oscillator.stop(audioCtx.currentTime + duration);
         } catch (e) {
             console.error("Audio context failed", e);
         }
@@ -72,8 +72,12 @@ export function WorkoutProvider({ children }) {
                 setRestTimer(prev => {
                     const nextValue = Math.max(0, prev.secondsRemaining - 1);
                     
+                    if (nextValue > 0 && nextValue <= 3) {
+                        playBeep(440, 0.2); // Low beep for countdown
+                    }
+
                     if (nextValue === 0 && prev.isActive) {
-                        playBeep();
+                        playBeep(880, 0.8); // High beep for end
                         showNotification();
                     }
 
@@ -126,6 +130,7 @@ export function WorkoutProvider({ children }) {
         setExercises([]);
         setSecondsElapsed(0);
         setGlobalNotes('');
+        stopRestTimer();
     };
 
     const finishWorkout = () => {

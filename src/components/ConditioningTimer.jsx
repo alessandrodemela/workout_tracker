@@ -45,7 +45,7 @@ export default function ConditioningTimer({ onClose }) {
                     </div>
                 </div>
 
-                <div className="flex flex-col gap-4 mt-8 flex-1 content-start">
+                <div className="flex flex-col gap-4 mt-8 flex-1 overflow-y-auto px-1 pb-4 pr-2">
                     {/* Prepare Time */}
                     <div className="flex items-center justify-between bg-[#171717]/50 p-4 rounded-3xl border border-[#262626] hover:border-brand-500/30 transition-colors">
                         <div className="flex items-center gap-4">
@@ -64,8 +64,11 @@ export default function ConditioningTimer({ onClose }) {
                                     type="number" 
                                     inputMode="numeric"
                                     pattern="[0-9]*"
-                                    value={config.prepareTime || ''} 
-                                    onChange={(e) => updateConfig('prepareTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    value={config.prepareTime === 0 ? '' : config.prepareTime} 
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        updateConfig('prepareTime', val === '' ? 0 : parseInt(val));
+                                    }} 
                                     className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
                                 />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
@@ -92,8 +95,11 @@ export default function ConditioningTimer({ onClose }) {
                                     type="number" 
                                     inputMode="numeric"
                                     pattern="[0-9]*"
-                                    value={config.workTime || ''} 
-                                    onChange={(e) => updateConfig('workTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    value={config.workTime === 0 ? '' : config.workTime} 
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        updateConfig('workTime', val === '' ? 0 : parseInt(val));
+                                    }} 
                                     className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
                                 />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
@@ -120,8 +126,11 @@ export default function ConditioningTimer({ onClose }) {
                                     type="number" 
                                     inputMode="numeric"
                                     pattern="[0-9]*"
-                                    value={config.restTime || ''} 
-                                    onChange={(e) => updateConfig('restTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    value={config.restTime === 0 ? '' : config.restTime} 
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        updateConfig('restTime', val === '' ? 0 : parseInt(val));
+                                    }} 
                                     className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
                                 />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
@@ -148,8 +157,11 @@ export default function ConditioningTimer({ onClose }) {
                                     type="number" 
                                     inputMode="numeric"
                                     pattern="[0-9]*"
-                                    value={config.rounds || ''} 
-                                    onChange={(e) => updateConfig('rounds', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    value={config.rounds === 0 ? '' : config.rounds} 
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        updateConfig('rounds', val === '' ? 0 : parseInt(val));
+                                    }} 
                                     className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
                                 />
                             </div>
@@ -175,8 +187,11 @@ export default function ConditioningTimer({ onClose }) {
                                     type="number" 
                                     inputMode="numeric"
                                     pattern="[0-9]*"
-                                    value={config.cycles || ''} 
-                                    onChange={(e) => updateConfig('cycles', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    value={config.cycles === 0 ? '' : config.cycles} 
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        updateConfig('cycles', val === '' ? 0 : parseInt(val));
+                                    }} 
                                     className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
                                 />
                             </div>
@@ -202,8 +217,11 @@ export default function ConditioningTimer({ onClose }) {
                                     type="number" 
                                     inputMode="numeric"
                                     pattern="[0-9]*"
-                                    value={config.cycleRestTime || ''} 
-                                    onChange={(e) => updateConfig('cycleRestTime', parseInt(e.target.value.replace(/\D/g, '')) || 0)} 
+                                    value={config.cycleRestTime === 0 ? '' : config.cycleRestTime} 
+                                    onChange={(e) => {
+                                        const val = e.target.value.replace(/\D/g, '');
+                                        updateConfig('cycleRestTime', val === '' ? 0 : parseInt(val));
+                                    }} 
                                     className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0" 
                                 />
                                 <span className="text-[#A3A3A3] text-sm font-bold">s</span>
@@ -213,7 +231,7 @@ export default function ConditioningTimer({ onClose }) {
                     </div>
                 </div>
 
-                <div className="mt-32 mb-4 max-w-lg mx-auto w-full px-2">
+                <div className="mt-auto py-6 max-w-lg mx-auto w-full px-2 border-t border-[#262626] bg-[#000000] z-[60]">
                     <button
                         onClick={(e) => {
                             e.stopPropagation();

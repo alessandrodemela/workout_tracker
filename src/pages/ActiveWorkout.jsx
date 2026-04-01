@@ -6,6 +6,7 @@ import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSe
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
 import RestTimer from '../components/RestTimer';
+import ConfirmModal from '../components/ConfirmModal';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function ActiveWorkout() {
@@ -20,6 +21,7 @@ export default function ActiveWorkout() {
     } = useWorkout();
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
+    const [showCancelModal, setShowCancelModal] = useState(false);
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -139,11 +141,13 @@ export default function ActiveWorkout() {
     };
 
     const handleCancelWorkout = () => {
-        if (window.confirm("Are you sure you want to cancel this workout? All progress will be lost.")) {
-            sessionStorage.removeItem('templateExercises');
-            cancelWorkout();
-            navigate('/home');
-        }
+        setShowCancelModal(true);
+    };
+
+    const confirmCancelWorkout = () => {
+        sessionStorage.removeItem('templateExercises');
+        cancelWorkout();
+        navigate('/home');
     };
 
     const handleFinishWorkout = async () => {
@@ -362,7 +366,7 @@ export default function ActiveWorkout() {
                 </div>
             )}
 
-            <div className="fixed bottom-24 left-6 right-6 z-40 max-w-lg mx-auto">
+            <div className="fixed bottom-32 left-6 right-6 z-40 max-w-lg mx-auto">
                 <PrimaryButton 
                     onClick={handleFinishWorkout} 
                     loading={isSaving} 
@@ -377,6 +381,17 @@ export default function ActiveWorkout() {
         </PrimaryButton>
             </div>
             <RestTimer />
+            
+            <ConfirmModal 
+                isOpen={showCancelModal}
+                onClose={() => setShowCancelModal(false)}
+                onConfirm={confirmCancelWorkout}
+                title="Discard Session?"
+                message="Are you sure you want to cancel this workout? All your progress in this session will be permanently lost."
+                confirmText="Discard Session"
+                cancelText="Keep Grinding"
+                type="danger"
+            />
         </div>
     );
 }
