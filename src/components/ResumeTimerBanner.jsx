@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Timer, Play, Pause, SkipForward, Square } from 'lucide-react';
 import { useTimer } from '../context/TimerContext';
+import ConfirmModal from './ConfirmModal';
 
 export default function ResumeTimerBanner() {
     const navigate = useNavigate();
@@ -9,6 +10,8 @@ export default function ResumeTimerBanner() {
         phase, timeLeft, setActiveTimerMode, 
         isActive, pauseTimer, resumeTimer, stopTimer, skipPhase 
     } = useTimer();
+
+    const [showStopModal, setShowStopModal] = useState(false);
 
     if (phase === 'Idle' || phase === 'Done') return null;
 
@@ -33,48 +36,61 @@ export default function ResumeTimerBanner() {
     };
 
     return (
-        <div
-            className={`w-full max-w-lg mx-auto bg-[#171717]/90 backdrop-blur-md border shadow-lg rounded-2xl p-4 flex items-center justify-between group transition-all animate-slide-up pointer-events-auto ${currentStyle}`}
-        >
-            <div className="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onClick={handleBannerClick}>
-                <div className="w-9 h-9 rounded-full bg-white/5 flex-shrink-0 flex items-center justify-center animate-pulse">
-                    <Timer className="w-5 h-5" />
+        <>
+            <div
+                className={`w-full max-w-lg mx-auto bg-[#171717]/90 backdrop-blur-md border shadow-lg rounded-2xl p-4 flex items-center justify-between group transition-all animate-slide-up pointer-events-auto ${currentStyle}`}
+            >
+                <div className="flex items-center gap-3 cursor-pointer overflow-hidden flex-1" onClick={handleBannerClick}>
+                    <div className="w-9 h-9 rounded-full bg-white/5 flex-shrink-0 flex items-center justify-center animate-pulse">
+                        <Timer className="w-5 h-5" />
+                    </div>
+                    <div className="flex flex-col text-left truncate">
+                        <span className="text-xs font-black text-white truncate">{phase} Phase</span>
+                        <span className="text-[14px] font-black tabular-nums transition-colors opacity-90">
+                            {formatTime(timeLeft)}
+                        </span>
+                    </div>
                 </div>
-                <div className="flex flex-col text-left truncate">
-                    <span className="text-xs font-black text-white truncate">{phase} Phase</span>
-                    <span className="text-[14px] font-black tabular-nums transition-colors opacity-90">
-                        {formatTime(timeLeft)}
-                    </span>
+
+                <div className="flex items-center gap-2 pl-4 border-l border-white/5">
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); setShowStopModal(true); }}
+                        className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                    >
+                        <Square className="w-4 h-4 fill-current" />
+                    </button>
+                    
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); isActive ? pauseTimer() : resumeTimer(); }}
+                        className="w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center text-black shadow-[0_0_20px_rgba(212,255,0,0.2)] hover:scale-105 active:scale-95 transition-all"
+                    >
+                        {isActive ? (
+                            <Pause className="w-5 h-5 fill-black" />
+                        ) : (
+                            <Play className="w-5 h-5 fill-black translate-x-0.5" />
+                        )}
+                    </button>
+                    
+                    <button 
+                        onClick={(e) => { e.stopPropagation(); skipPhase(); }}
+                        className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-all active:scale-95"
+                    >
+                        <SkipForward className="w-4 h-4 fill-current" />
+                    </button>
                 </div>
             </div>
 
-            <div className="flex items-center gap-2 pl-4 border-l border-white/5">
-                <button 
-                    onClick={(e) => { e.stopPropagation(); stopTimer(); }}
-                    className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95"
-                >
-                    <Square className="w-4 h-4 fill-current" />
-                </button>
-                
-                <button 
-                    onClick={(e) => { e.stopPropagation(); isActive ? pauseTimer() : resumeTimer(); }}
-                    className="w-12 h-12 rounded-full bg-brand-500 flex items-center justify-center text-black shadow-[0_0_20px_rgba(212,255,0,0.2)] hover:scale-105 active:scale-95 transition-all"
-                >
-                    {isActive ? (
-                        <Pause className="w-5 h-5 fill-black" />
-                    ) : (
-                        <Play className="w-5 h-5 fill-black translate-x-0.5" />
-                    )}
-                </button>
-                
-                <button 
-                    onClick={(e) => { e.stopPropagation(); skipPhase(); }}
-                    className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-all active:scale-95"
-                >
-                    <SkipForward className="w-4 h-4 fill-current" />
-                </button>
-            </div>
-        </div>
+            <ConfirmModal
+                isOpen={showStopModal}
+                onClose={() => setShowStopModal(false)}
+                onConfirm={() => { stopTimer(); setShowStopModal(false); }}
+                title="Stop Circuit?"
+                message="Are you sure you want to stop the current circuit? All progress will be lost."
+                confirmText="Stop Circuit"
+                cancelText="Keep Going"
+                type="danger"
+            />
+        </>
     );
 }
 

@@ -26,12 +26,14 @@ export default function ConfirmModal({ isOpen, onClose, onConfirm, title, messag
                         >
                             {confirmText}
                         </button>
-                        <button
-                            onClick={onClose}
-                            className="w-full py-4 rounded-2xl bg-[#262626] text-[#A3A3A3] font-black uppercase tracking-widest text-sm hover:text-white transition-all active:scale-95"
-                        >
-                            {cancelText}
-                        </button>
+                        {cancelText && (
+                            <button
+                                onClick={onClose}
+                                className="w-full py-4 rounded-2xl bg-[#262626] text-[#A3A3A3] font-black uppercase tracking-widest text-sm hover:text-white transition-all active:scale-95"
+                            >
+                                {cancelText}
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>

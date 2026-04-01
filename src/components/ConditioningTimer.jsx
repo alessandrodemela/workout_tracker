@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Play, Pause, Plus, Minus, Settings2, ChevronLeft, SkipForward, Square, Clock, Zap, Coffee, Repeat, RefreshCw, Timer } from 'lucide-react';
 import { useTimer } from '../context/TimerContext';
+import { useWorkout } from '../context/WorkoutContext';
 import ConfirmModal from './ConfirmModal';
 
 // Reusable config row component
@@ -40,7 +41,10 @@ export default function ConditioningTimer({ onClose }) {
         startTimer, pauseTimer, resumeTimer, stopTimer, skipPhase
     } = useTimer();
 
+    const { isActive: isWorkoutActive, cancelWorkout } = useWorkout();
+
     const [showStopModal, setShowStopModal] = useState(false);
+    const [showWorkoutConflictModal, setShowWorkoutConflictModal] = useState(false);
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
@@ -135,13 +139,31 @@ export default function ConditioningTimer({ onClose }) {
                 {/* Sticky Start button */}
                 <div className="flex-shrink-0 py-4 border-t border-[#262626]">
                     <button
-                        onClick={(e) => { e.stopPropagation(); startTimer(); }}
+                        onClick={(e) => { e.stopPropagation(); isWorkoutActive ? setShowWorkoutConflictModal(true) : startTimer(); }}
                         className="w-full py-5 rounded-[2rem] bg-brand-500 text-black font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95 transition-transform cursor-pointer"
                     >
                         <Play className="w-6 h-6 fill-black" />
                         Start Circuit
                     </button>
                 </div>
+
+                <ConfirmModal
+                    isOpen={showWorkoutConflictModal}
+                    onClose={() => {
+                        setShowWorkoutConflictModal(false);
+                        onClose(); // Exit the setup mode so the workout banner reappears
+                    }}
+                    onConfirm={() => {
+                        cancelWorkout(); // Stop the workout
+                        setShowWorkoutConflictModal(false);
+                        startTimer(); // Start the circuit
+                    }}
+                    title="Stop Active Workout?"
+                    message="You have a workout session active. Starting a circuit will end your current workout. Continue?"
+                    confirmText="Stop Workout & Start Circuit"
+                    cancelText="Back to Workout"
+                    type="danger"
+                />
             </div>
         );
     }

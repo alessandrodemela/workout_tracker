@@ -5,6 +5,7 @@ import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle } from
 import { API_URL, fetcher, addExercise } from '../api';
 import PrimaryButton from '../components/PrimaryButton';
 import { useWorkout } from '../context/WorkoutContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 const EQUIPMENT_COLORS = {
     'Barbell': 'text-yellow-500 bg-yellow-500/10 border-yellow-500/20',
@@ -44,6 +45,7 @@ export default function ExerciseDatabase() {
     const [justAdded, setJustAdded] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
     const [formData, setFormData] = useState({
         Exercise_Name: '', Target_Muscle: '', Target_Area: '', Equipment: '', Notes: ''
     });
@@ -75,7 +77,11 @@ export default function ExerciseDatabase() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.Exercise_Name) return alert('Exercise Name is required');
+        if (!formData.Exercise_Name) return setAlertConfig({ 
+            isOpen: true, 
+            title: 'Name Required', 
+            message: 'Please provide a name for the new exercise.' 
+        });
 
         setIsSaving(true);
         try {
@@ -83,7 +89,13 @@ export default function ExerciseDatabase() {
             setFormData({ Exercise_Name: '', Target_Muscle: '', Target_Area: '', Equipment: '', Notes: '' });
             setIsAdding(false);
             mutate();
-        } catch (err) { alert('Error saving exercise'); }
+        } catch (err) { 
+            setAlertConfig({ 
+                isOpen: true, 
+                title: 'Error', 
+                message: 'Failed to save the new exercise. Please try again.' 
+            });
+        }
         finally { setIsSaving(false); }
     };
 
@@ -364,6 +376,16 @@ export default function ExerciseDatabase() {
                     </div>
                 </div>
             )}
+            <ConfirmModal
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                onConfirm={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                confirmText="Got it"
+                cancelText={null}
+                type={alertConfig.title === 'Error' ? 'danger' : 'brand'}
+            />
         </div>
     );
 }

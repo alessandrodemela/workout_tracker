@@ -51,7 +51,7 @@ function AppContent() {
 
             {/* Floating banners above nav */}
             <div className="fixed bottom-[calc(env(safe-area-inset-bottom,20px)+84px)] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
-                {isActive && location.pathname !== '/workout' && !activeTimerMode && <ResumeWorkoutBanner />}
+                {isActive && location.pathname !== '/workout' && (location.pathname !== '/conditioning' || !activeTimerMode) && <ResumeWorkoutBanner />}
                 {isTimerActive && !activeTimerMode && <ResumeTimerBanner />}
                 {isTimerActive && activeTimerMode && location.pathname !== '/conditioning' && <ResumeTimerBanner />}
             </div>

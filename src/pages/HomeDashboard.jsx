@@ -1,12 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
 import { Dumbbell, Plus } from 'lucide-react';
 import { API_URL, fetcher } from '../api';
 import CalendarWidget from '../components/CalendarWidget';
+import { useTimer } from '../context/TimerContext';
+import { useWorkout } from '../context/WorkoutContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function HomeDashboard() {
     const navigate = useNavigate();
+    const { phase, stopTimer } = useTimer();
+    const { isActive: isWorkoutActive } = useWorkout();
+
+    const [pendingAction, setPendingAction] = useState(null);
 
     const { data: templatesData, error: templatesError } = useSWR(`${API_URL}/templates`, fetcher);
     const { data: historyData, error: historyError } = useSWR(`${API_URL}/workout-history`, fetcher);
@@ -35,12 +42,30 @@ export default function HomeDashboard() {
 
     const templateKeys = Object.keys(groupedTemplates).sort();
 
+    const isTimerActive = phase !== 'Idle' && phase !== 'Done';
+
     const handleStartTemplate = (templateExercises) => {
+        if (isTimerActive) {
+            setPendingAction(() => () => {
+                stopTimer();
+                sessionStorage.setItem('templateExercises', JSON.stringify(templateExercises));
+                navigate('/workout');
+            });
+            return;
+        }
         sessionStorage.setItem('templateExercises', JSON.stringify(templateExercises));
         navigate('/workout');
     };
 
     const handleStartCustom = () => {
+        if (isTimerActive) {
+            setPendingAction(() => () => {
+                stopTimer();
+                sessionStorage.removeItem('templateExercises');
+                navigate('/workout');
+            });
+            return;
+        }
         sessionStorage.removeItem('templateExercises');
         navigate('/workout');
     };
@@ -105,6 +130,20 @@ export default function HomeDashboard() {
                 <h2 className="text-lg font-bold">Activity</h2>
                 <CalendarWidget activeDays={workoutDates} />
             </div>
+
+            <ConfirmModal
+                isOpen={!!pendingAction}
+                onClose={() => setPendingAction(null)}
+                onConfirm={() => {
+                    if (pendingAction) pendingAction();
+                    setPendingAction(null);
+                }}
+                title="Stop Active Circuit?"
+                message="You have a conditioning circuit running. Starting a workout will end your current circuit session. Continue?"
+                confirmText="Stop Circuit & Start Workout"
+                cancelText="Back to Circuit"
+                type="danger"
+            />
         </div>
     );
 }

@@ -1,10 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Timer, Activity, Repeat, Zap } from 'lucide-react';
 import ConditioningTimer from '../components/ConditioningTimer';
 import { useTimer } from '../context/TimerContext';
+import ConfirmModal from '../components/ConfirmModal';
 
 export default function ConditioningScreen() {
     const { phase, activeTimerMode, setActiveTimerMode } = useTimer();
+    const [showAlert, setShowAlert] = useState(false);
 
     const timerModes = [
         { id: 'circuit', title: 'Circuit', description: 'Custom work/rest intervals with multiple cycles', icon: Timer },
@@ -17,7 +19,7 @@ export default function ConditioningScreen() {
         if (modeId === 'circuit') {
             setActiveTimerMode('circuit');
         } else {
-            alert("This timer mode will be implemented soon!");
+            setShowAlert(true);
         }
     };
 
@@ -57,6 +59,17 @@ export default function ConditioningScreen() {
                     </button>
                 ))}
             </div>
+
+            <ConfirmModal
+                isOpen={showAlert}
+                onClose={() => setShowAlert(false)}
+                onConfirm={() => setShowAlert(false)}
+                title="Coming Soon"
+                message="This timer mode will be implemented soon! For now, please use the Circuit mode."
+                confirmText="Got it"
+                cancelText={null}
+                type="brand"
+            />
         </div>
     );
 }

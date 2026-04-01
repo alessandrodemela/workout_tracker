@@ -22,6 +22,7 @@ export default function ActiveWorkout() {
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
+    const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -134,7 +135,7 @@ export default function ActiveWorkout() {
 
             initializeWorkout(rawTemplate, resolutions);
         } catch (err) {
-            alert('Failed to resolve exercises');
+            setAlertConfig({ isOpen: true, title: 'Error', message: 'Failed to resolve Exercises.' });
         } finally {
             setIsSaving(false);
         }
@@ -151,7 +152,13 @@ export default function ActiveWorkout() {
     };
 
     const handleFinishWorkout = async () => {
-        if (exercises.length === 0 && sessionType !== 'Functional') return alert('Add at least one exercise');
+        if (exercises.length === 0 && sessionType !== 'Functional') {
+            return setAlertConfig({ 
+                isOpen: true, 
+                title: 'Empty Workout', 
+                message: 'Add at least one exercise before completing the session.' 
+            });
+        }
 
         setIsSaving(true);
         const validRows = [];
@@ -173,7 +180,11 @@ export default function ActiveWorkout() {
 
         if (validRows.length === 0 && sessionType !== 'Functional') {
             setIsSaving(false);
-            return alert('Fill at least one set with reps!');
+            return setAlertConfig({ 
+                isOpen: true, 
+                title: 'No Recorded Sets', 
+                message: 'Fill at least one set with reps before finishing.' 
+            });
         }
 
         try {
@@ -196,7 +207,11 @@ export default function ActiveWorkout() {
         } catch (err) { 
             console.error(err);
             setIsSaving(false);
-            alert('Error saving session'); 
+            setAlertConfig({ 
+                isOpen: true, 
+                title: 'Save Error', 
+                message: 'An error occurred while saving your session. Please check your connection and try again.' 
+            });
         }
     };
 
@@ -385,6 +400,17 @@ export default function ActiveWorkout() {
                 confirmText="Discard Session"
                 cancelText="Keep Grinding"
                 type="danger"
+            />
+
+            <ConfirmModal 
+                isOpen={alertConfig.isOpen}
+                onClose={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                onConfirm={() => setAlertConfig({ ...alertConfig, isOpen: false })}
+                title={alertConfig.title}
+                message={alertConfig.message}
+                confirmText="Got it"
+                cancelText={null}
+                type="brand"
             />
         </div>
     );
