@@ -21,9 +21,9 @@ export const getExercises = async () => {
         .select('*')
         .order('name', { ascending: true });
     
-    if (error) {
+    if (error || !data) {
         console.error('Error fetching exercises:', error);
-        throw error;
+        return { exercises: [], full_list: [] };
     }
     
     return {
@@ -46,7 +46,7 @@ export const getExerciseHistory = async (exerciseName) => {
         .eq('exercise', exerciseName)
         .order('date', { ascending: false });
     
-    if (error) throw error;
+    if (error || !data) return { history: [], pb: null };
 
     // Calculate PB
     let pb = null;
@@ -85,9 +85,10 @@ export const getTemplates = async () => {
         .select('*')
         .order('id', { ascending: true });
     
-    if (error) {
-        if (error.code === 'PGRST116') return { templates: [] }; // Handle no data gracefully
-        throw error;
+    if (error || !data) {
+        if (error?.code === 'PGRST116') return { templates: [] }; // Handle no data gracefully
+        console.error('Error fetching templates:', error);
+        return { templates: [] };
     }
     
     const formattedTemplates = (data || []).map(t => ({
@@ -117,8 +118,10 @@ export const getWorkoutHistory = async () => {
         .select('*')
         .order('date', { ascending: false });
 
-    if (logsError) throw logsError;
-    if (funcError) throw funcError;
+    if (logsError || funcError) {
+        console.error('Error fetching workout history:', logsError || funcError);
+        return { workouts: [], functional: [] };
+    }
 
     // We also need dim_exercises to get Target_Muscle (joining in memory for simplicity or we could use Supabase joins)
     const { data: exercises } = await supabase.from('exercises').select('name, target_muscle');
