@@ -106,10 +106,6 @@ export const TimerProvider = ({ children }) => {
         setIsActive(true);
     };
     const stopTimer = () => {
-        if (phase !== 'Idle' && phase !== 'Done') {
-            const confirmed = window.confirm("Are you sure you want to stop this circuit? All progress will be lost.");
-            if (!confirmed) return;
-        }
         setIsActive(false);
         setPhase('Idle');
         setIsConfiguring(true);

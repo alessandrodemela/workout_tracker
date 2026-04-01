@@ -46,7 +46,7 @@ export default function HomeDashboard() {
     };
 
     return (
-        <div className="flex flex-col gap-8 pb-32 animate-fade-in pt-6">
+        <div className="flex flex-col gap-8 pb-4 animate-fade-in pt-6">
             <div className="flex justify-between items-end">
                 <div className="flex flex-col">
                     <span className="text-xs font-bold text-[#A3A3A3] uppercase tracking-widest pl-1 mb-1">Welcome back</span>

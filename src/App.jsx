@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 
 import LandingScreen from './pages/LandingScreen.jsx';
@@ -23,35 +23,41 @@ function AppContent() {
         const handlePopState = () => {
             window.history.pushState(null, '', window.location.pathname);
         };
-
         window.history.pushState(null, '', window.location.pathname);
-        
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
     }, [location.pathname]);
 
     const isTimerActive = phase !== 'Idle' && phase !== 'Done';
+    const showNav = location.pathname !== '/';
 
     return (
-        <div className="min-h-screen flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30">
-            <main className="flex-1 w-full max-w-lg mx-auto px-6 pb-[140px]">
+        <div className="h-dvh flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30 overflow-hidden">
+            {/* Scrollable page content — sits above the fixed nav */}
+            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col ${showNav ? 'pb-24' : ''}`}>
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />
                     <Route path="/workout" element={<ActiveWorkout />} />
-                    <Route path="/conditioning" element={<ConditioningScreen />} />
+                    <Route path="/conditioning" element={
+                        <div className="flex-1 flex flex-col">
+                            <ConditioningScreen />
+                        </div>
+                    } />
                     <Route path="/exercises" element={<ExerciseDatabase />} />
                     <Route path="/history" element={<History />} />
                 </Routes>
             </main>
 
-            <div className="fixed bottom-[120px] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
-                {isActive && location.pathname !== '/workout' && <ResumeWorkoutBanner />}
+            {/* Floating banners above nav */}
+            <div className="fixed bottom-[72px] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
+                {isActive && location.pathname !== '/workout' && !activeTimerMode && <ResumeWorkoutBanner />}
                 {isTimerActive && !activeTimerMode && <ResumeTimerBanner />}
                 {isTimerActive && activeTimerMode && location.pathname !== '/conditioning' && <ResumeTimerBanner />}
             </div>
-            
-            {location.pathname !== '/' && <BottomNav />}
+
+            {/* Bottom nav — always fixed at bottom */}
+            {showNav && <BottomNav />}
         </div>
     );
 }

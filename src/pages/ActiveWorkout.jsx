@@ -284,7 +284,7 @@ export default function ActiveWorkout() {
     }
 
     return (
-        <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6">
+        <div className="flex flex-col gap-6 pb-6 animate-fade-in pt-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate('/home')} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
@@ -315,13 +315,6 @@ export default function ActiveWorkout() {
             {sessionType === 'Functional' ? (
                 <div className="flex flex-col gap-4">
                     <textarea className="input-field min-h-[200px]" placeholder="Circuit details..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
-                    
-                    <button 
-                        onClick={handleCancelWorkout}
-                        className="w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest hover:border-red-500/50 hover:text-red-500 transition-all flex items-center justify-center gap-2"
-                    >
-                        Discard Session
-                    </button>
                 </div>
             ) : (
                 <div className="flex flex-col gap-6">
@@ -356,21 +349,15 @@ export default function ActiveWorkout() {
                         </button>
                     )}
                     <textarea className="input-field min-h-[100px]" placeholder="Session Notes..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
-                    
-                    <button 
-                        onClick={handleCancelWorkout}
-                        className="mt-4 w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest hover:border-red-500/50 hover:text-red-500 transition-all flex items-center justify-center gap-2"
-                    >
-                        Discard Session
-                    </button>
                 </div>
             )}
 
-            <div className="fixed bottom-32 left-6 right-6 z-40 max-w-lg mx-auto">
+            {/* Action buttons — in document flow, always reachable by scrolling */}
+            <div className="flex flex-col gap-3 mt-2">
                 <PrimaryButton 
                     onClick={handleFinishWorkout} 
                     loading={isSaving} 
-                    className={`py-5 shadow-2xl transition-all duration-300 ${isSaved ? 'bg-green-500 text-white' : 'shadow-brand-900/20'}`}
+                    className={`py-5 transition-all duration-300 ${isSaved ? 'bg-green-500 text-white' : ''}`}
                     disabled={isSaved}
                 >
                     {isSaved ? (
@@ -378,8 +365,15 @@ export default function ActiveWorkout() {
                     ) : (
                         <><Check className="w-5 h-5 mr-1" /> Complete Session</>
                     )}
-        </PrimaryButton>
+                </PrimaryButton>
+                <button 
+                    onClick={handleCancelWorkout}
+                    className="w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest hover:border-red-500/50 hover:text-red-500 transition-all flex items-center justify-center gap-2"
+                >
+                    Discard Session
+                </button>
             </div>
+
             <RestTimer />
             
             <ConfirmModal 

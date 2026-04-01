@@ -12,9 +12,12 @@
 
     /* Remove scrollbar for a cleaner mobile look */
     ::-webkit-scrollbar {
-        width: 0px;
-        height: 0px;
-        background: transparent;
+        display: none;
+    }
+
+    * {
+        scrollbar-width: none; /* Firefox */
+        -ms-overflow-style: none; /* IE / Edge */
     }
 }
 
