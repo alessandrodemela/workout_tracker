@@ -7,42 +7,50 @@ import HomeDashboard from './pages/HomeDashboard.jsx';
 import ActiveWorkout from './pages/ActiveWorkout.jsx';
 import ExerciseDatabase from './pages/ExerciseDatabase.jsx';
 import History from './pages/History.jsx';
+import ConditioningScreen from './pages/ConditioningScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import { WorkoutProvider, useWorkout } from './context/WorkoutContext.jsx';
 import ResumeWorkoutBanner from './components/ResumeWorkoutBanner.jsx';
+import { TimerProvider, useTimer } from './context/TimerContext.jsx';
+import ResumeTimerBanner from './components/ResumeTimerBanner.jsx';
 
 function AppContent() {
     const location = useLocation();
     const { isActive } = useWorkout();
+    const { phase, activeTimerMode } = useTimer();
 
     useEffect(() => {
-        // App Simulation: Neutralize browser back button
         const handlePopState = () => {
-            // Every time the user hits "back", we push the current page again
-            // effectively jamming the back button to stay on the current app view
             window.history.pushState(null, '', window.location.pathname);
         };
 
-        // Trap the initial load
         window.history.pushState(null, '', window.location.pathname);
         
         window.addEventListener('popstate', handlePopState);
         return () => window.removeEventListener('popstate', handlePopState);
-    }, [location.pathname]); // Update trap whenever we move page via buttons
+    }, [location.pathname]);
+
+    const isTimerActive = phase !== 'Idle' && phase !== 'Done';
 
     return (
         <div className="min-h-screen flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30">
-            <main className="flex-1 w-full max-w-lg mx-auto px-6 pb-32">
+            <main className="flex-1 w-full max-w-lg mx-auto px-6 pb-[140px]">
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />
                     <Route path="/workout" element={<ActiveWorkout />} />
+                    <Route path="/conditioning" element={<ConditioningScreen />} />
                     <Route path="/exercises" element={<ExerciseDatabase />} />
                     <Route path="/history" element={<History />} />
                 </Routes>
             </main>
 
-            {isActive && location.pathname !== '/workout' && <ResumeWorkoutBanner />}
+            <div className="fixed bottom-[104px] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
+                {isActive && location.pathname !== '/workout' && <ResumeWorkoutBanner />}
+                {isTimerActive && !activeTimerMode && <ResumeTimerBanner />}
+                {isTimerActive && activeTimerMode && location.pathname !== '/conditioning' && <ResumeTimerBanner />}
+            </div>
+            
             {location.pathname !== '/' && <BottomNav />}
         </div>
     );
@@ -50,11 +58,13 @@ function AppContent() {
 
 function App() {
     return (
-        <WorkoutProvider>
-            <Router>
-                <AppContent />
-            </Router>
-        </WorkoutProvider>
+        <TimerProvider>
+            <WorkoutProvider>
+                <Router>
+                    <AppContent />
+                </Router>
+            </WorkoutProvider>
+        </TimerProvider>
     );
 }
 

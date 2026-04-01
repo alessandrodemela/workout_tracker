@@ -1,11 +1,12 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { Home, ClipboardList, Clock } from 'lucide-react';
+import { Home, ClipboardList, Clock, Timer } from 'lucide-react';
 
 export default function BottomNav() {
     const navItems = [
         { path: '/home', icon: Home, label: 'Home' },
         { path: '/exercises', icon: ClipboardList, label: 'Exercises' },
+        { path: '/conditioning', icon: Timer, label: 'Timers' },
         { path: '/history', icon: Clock, label: 'History' }
     ];
 
