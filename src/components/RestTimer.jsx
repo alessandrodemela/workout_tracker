@@ -97,7 +97,7 @@ export default function RestTimer() {
                                 onClick={() => addRestTime(30)}
                                 className="flex-1 py-3 bg-[#171717] rounded-2xl text-xs font-bold text-white border border-[#262626] flex items-center justify-center gap-2"
                             >
-                                <Plus className="w-4 h-4 text-brand-500" /> +30s
+                                <Plus className="w-4 h-4 text-brand-500" /> 30s
                             </button>
                             <button
                                 onClick={stopRestTimer}
