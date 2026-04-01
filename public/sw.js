@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workout-pwa-v1';
+const CACHE_NAME = 'workout-pwa-v2';
 const urlsToCache = [
     '/',
     '/index.html',
@@ -16,12 +16,26 @@ self.addEventListener('install', event => {
 
 self.addEventListener('fetch', event => {
     event.respondWith(
-        caches.match(event.request)
-            .then(response => {
-                if (response) {
-                    return response; // Return cached route
-                }
-                return fetch(event.request);
-            })
+        fetch(event.request).catch(async () => {
+            const cache = await caches.open(CACHE_NAME);
+            const cachedResponse = await cache.match(event.request);
+            if (cachedResponse) {
+                return cachedResponse;
+            }
+            // Optional: return a custom offline page
+            // return caches.match('/offline.html');
+        })
+    );
+});
+
+// Clean up old caches
+self.addEventListener('activate', event => {
+    event.waitUntil(
+        caches.keys().then(cacheNames => {
+            return Promise.all(
+                cacheNames.filter(cacheName => cacheName !== CACHE_NAME)
+                    .map(cacheName => caches.delete(cacheName))
+            );
+        })
     );
 });

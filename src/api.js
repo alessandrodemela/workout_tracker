@@ -136,7 +136,7 @@ export const getWorkoutHistory = async () => {
         Kg: log.kg,
         Sets: log.sets,
         Reps: log.reps,
-        Target_Muscle: muscleMap[log.exercise.toUpperCase()] || null
+        Target_Muscle: (log.exercise && muscleMap[log.exercise.toUpperCase()]) || null
     }));
 
     const enrichedFunctional = (functional || []).map(f => ({
@@ -181,7 +181,7 @@ export const saveWorkoutSession = async (session) => {
 };
 
 export const saveFunctionalSession = async (session) => {
-    const { Date: sessionDate, Session_Type, Exercise, Notes } = session;
+    const { Date: sessionDate, Session_Type, Exercise, Notes } = session || {};
     const dateObj = new Date(sessionDate);
     const weekNum = getWeekNumber(dateObj);
 
