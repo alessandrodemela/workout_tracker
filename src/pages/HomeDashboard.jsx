@@ -76,18 +76,11 @@ export default function HomeDashboard() {
         <div className="flex flex-col gap-8 pb-4 animate-fade-in pt-6">
             <div className="flex justify-between items-start">
                 <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-[0.2em] mb-1">Workout Tracker</span>
+                    <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-[0.2em] mb-1">Strive</span>
                     <h1 className="text-4xl font-black tracking-tight text-white">
-                        Ciao, <span className="text-brand-500">{user?.email?.split('@')[0] || 'Atleta'}</span>
+                        Hey, <span className="text-brand-500">{user?.user_metadata?.nickname || user?.email?.split('@')[0] || 'Atleta'}</span>
                     </h1>
                 </div>
-                <button
-                    onClick={() => signOut()}
-                    className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white hover:bg-red-500/10 hover:border-red-500/20 transition-all group"
-                    title="Esci"
-                >
-                    <LogOut className="w-5 h-5 group-hover:scale-95 transition-transform" />
-                </button>
             </div>
 
             <div className="flex flex-col gap-4">

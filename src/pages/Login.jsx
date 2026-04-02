@@ -19,12 +19,13 @@ const ValidationTooltip = ({ message, visible }) => {
 
 const Login = () => {
     const [isSignUp, setIsSignUp] = useState(false);
+    const [isForgot, setIsForgot] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [validationError, setValidationError] = useState({ field: null, message: '' });
-    const { signIn, signUp } = useAuth();
+    const { signIn, signUp, resetPassword } = useAuth();
 
     // Clear validation error when user types
     useEffect(() => {
@@ -56,7 +57,10 @@ const Login = () => {
         setError(null);
 
         try {
-            if (isSignUp) {
+            if (isForgot) {
+                await resetPassword(email);
+                setError({ type: 'success', message: 'Password reset link sent to your email!' });
+            } else if (isSignUp) {
                 await signUp(email, password);
                 setError({ type: 'success', message: "Check your email to confirm your account!" });
             } else {
@@ -79,12 +83,12 @@ const Login = () => {
                 {/* Logo / Header Section */}
                 <div className="flex flex-col items-center gap-4 text-center">
                     <div className="w-16 h-16 rounded-[2rem] bg-[#171717] border border-[#262626] overflow-hidden flex items-center justify-center text-brand-500 shadow-xl shadow-brand-500/5">
-                        <img src="/icon.png" alt="Strive Logo" className="w-full h-full object-cover" />
+                        <img src="/icon.png" alt="Strive Logo" className="w-full h-full object-cover mix-blend-screen" />
                     </div>
                     <div className="flex flex-col">
                         <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.3em] mb-1">Strive</span>
                         <h1 className="text-4xl font-black text-white tracking-tighter uppercase leading-none">
-                            {isSignUp ? 'Join' : 'Welcome'}
+                            {isForgot ? 'Reset' : isSignUp ? 'Join' : 'Welcome'}
                         </h1>
                     </div>
                 </div>
@@ -109,20 +113,22 @@ const Login = () => {
                                 />
                             </div>
 
-                            <div className="flex flex-col gap-1 relative">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-[#404040] ml-1">Password</span>
-                                <ValidationTooltip
-                                    message={validationError.message}
-                                    visible={validationError.field === 'password'}
-                                />
-                                <input
-                                    type="password"
-                                    placeholder="••••••••"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className={`input-field ${validationError.field === 'password' ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
-                                />
-                            </div>
+                            {!isForgot && (
+                                <div className="flex flex-col gap-1 relative">
+                                    <span className="text-[10px] font-black uppercase tracking-widest text-[#404040] ml-1">Password</span>
+                                    <ValidationTooltip
+                                        message={validationError.message}
+                                        visible={validationError.field === 'password'}
+                                    />
+                                    <input
+                                        type="password"
+                                        placeholder="••••••••"
+                                        value={password}
+                                        onChange={(e) => setPassword(e.target.value)}
+                                        className={`input-field ${validationError.field === 'password' ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
+                                    />
+                                </div>
+                            )}
                         </div>
 
                         {error && (
@@ -140,7 +146,9 @@ const Login = () => {
                             loading={loading}
                             className="mt-2 py-5"
                         >
-                            {isSignUp ? (
+                            {isForgot ? (
+                                <>Send Reset Link</>
+                            ) : isSignUp ? (
                                 <><UserPlus className="w-5 h-5 mr-1" /> Create Account</>
                             ) : (
                                 <><LogIn className="w-5 h-5 mr-1" /> Login</>
@@ -151,7 +159,9 @@ const Login = () => {
                     <div className="mt-8 flex flex-col items-center gap-4">
                         <div className="w-8 h-[1px] bg-[#171717]"></div>
                         <button
+                            type="button"
                             onClick={() => {
+                                setIsForgot(false);
                                 setIsSignUp(!isSignUp);
                                 setError(null);
                                 setValidationError({ field: null, message: '' });
@@ -160,6 +170,20 @@ const Login = () => {
                         >
                             {isSignUp ? 'Already have an account? Sign In' : 'New here? Register'}
                         </button>
+
+                        {!isSignUp && (
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsForgot(!isForgot);
+                                    setError(null);
+                                    setValidationError({ field: null, message: '' });
+                                }}
+                                className="text-[#A3A3A3] hover:text-brand-500 transition-colors text-[11px] font-black uppercase tracking-[0.1em]"
+                            >
+                                {isForgot ? 'Back to Login' : 'Forgot Password?'}
+                            </button>
+                        )}
                     </div>
                 </div>
 
