@@ -15,7 +15,7 @@ export default function WorkoutCard({ log, index, total }) {
                 <h3 className="text-base font-bold text-white leading-tight">{log.Exercise}</h3>
                 <div className="flex items-center gap-3 mt-1">
                     <div className="flex items-baseline gap-1">
-                        <span className="text-xl font-black text-white">{log.Kg}</span>
+                        <span className="text-xl font-black text-white">{parseFloat(log.Kg || 0).toFixed(2)}</span>
                         <span className="text-[10px] font-bold text-[#A3A3A3] uppercase">KG</span>
                     </div>
                     <span className="h-4 w-[1px] bg-[#262626]"></span>

@@ -259,7 +259,7 @@ export default function ExerciseDatabase() {
                                     <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/10 blur-[50px] rounded-full -mr-10 -mt-10 group-hover:bg-brand-500/20 transition-all duration-700"></div>
                                     <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3A3A3] mb-3">Personal Best</h3>
                                     <div className="flex items-baseline gap-2">
-                                        <span className="text-4xl font-black text-brand-500 tracking-tighter">{exerciseHistoryData.pb.Kg}kg</span>
+                                        <span className="text-4xl font-black text-brand-500 tracking-tighter">{parseFloat(exerciseHistoryData.pb.Kg || 0).toFixed(2)}kg</span>
                                         <span className="text-xl font-bold text-[#A3A3A3]/50 tracking-tight">×</span>
                                         <span className="text-2xl font-black text-white tracking-tight">
                                             {exerciseHistoryData.pb.Reps?.toString().split(',')[0] || '1'} <span className="text-sm font-bold text-[#404040]">reps</span>
@@ -308,7 +308,7 @@ export default function ExerciseDatabase() {
                                                 return (
                                                     <div key={i} className="flex flex-col items-center justify-end flex-1 h-full gap-1">
                                                         <span className={`text-[9px] font-black ${isLatest ? 'text-[#D4FF00]' : 'text-[#404040]'}`}>
-                                                            {log.Kg}
+                                                            {parseFloat(log.Kg || 0).toFixed(2)}
                                                         </span>
                                                         <div
                                                             className="w-full rounded-t-lg transition-all duration-500"
@@ -351,7 +351,7 @@ export default function ExerciseDatabase() {
                                                     <div className="flex flex-wrap gap-2.5">
                                                         {repsArr.map((rep, idx) => (
                                                             <div key={idx} className="bg-[#111111] border border-[#171717] hover:border-[#262626] py-2.5 px-5 rounded-2xl flex items-center gap-1.5 transition-all hover:scale-105">
-                                                                <span className="text-sm font-black text-white">{log.Kg}</span>
+                                                                <span className="text-sm font-black text-white">{parseFloat(log.Kg || 0).toFixed(2)}</span>
                                                                 <span className="text-[10px] font-bold text-[#404040]">kg</span>
                                                                 <span className="text-[10px] font-black text-[#404040]">×</span>
                                                                 <span className="text-sm font-black text-white">{rep.trim()}</span>

@@ -169,7 +169,7 @@ export const saveWorkoutSession = async (session) => {
         sets: ex.Sets,
         reps: ex.Reps,
         rpe: ex.RPE,
-        notes: Notes
+        notes: (ex.Notes && Notes) ? `${ex.Notes}\n${Notes}` : (ex.Notes || Notes || '')
     }));
 
     const { error } = await supabase

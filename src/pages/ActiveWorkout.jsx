@@ -167,12 +167,15 @@ export default function ActiveWorkout() {
                 const validSets = ex.sets.filter(s => s.reps);
                 if (validSets.length > 0) {
                     const maxKg = Math.max(...validSets.map(s => parseFloat(s.kg) || 0));
+                    const weights = validSets.map(s => s.kg || '0').join(',');
                     validRows.push({
                         Exercise: ex.name,
                         Kg: maxKg,
                         Sets: validSets.length.toString(),
                         Reps: validSets.map(s => s.reps).join(', '),
-                        RPE: parseFloat(validSets[validSets.length - 1].rpe || 8)
+                        RPE: parseFloat(validSets[validSets.length - 1].rpe || 8),
+                        // Store detailed weights in notes for better volume calculation in history
+                        Notes: `[[W:${weights}]]`
                     });
                 }
             }
@@ -191,7 +194,10 @@ export default function ActiveWorkout() {
             if (sessionType === 'Functional') {
                 await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes });
             } else {
-                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: globalNotes, Exercises: validRows });
+                // Add duration to global notes to be parsed by History
+                const durationNote = `[[D:${secondsElapsed}]]`;
+                const finalNotes = globalNotes ? `${globalNotes}\n${durationNote}` : durationNote;
+                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows });
             }
             
             // Critical UX Fix: Invalidate history cache and show success briefly
