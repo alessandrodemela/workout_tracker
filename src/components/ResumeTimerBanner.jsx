@@ -7,9 +7,11 @@ import ConfirmModal from './ConfirmModal';
 export default function ResumeTimerBanner() {
     const navigate = useNavigate();
     const { 
-        phase, timeLeft, setActiveTimerMode, 
+        phase, timeLeft, setActiveTimerMode, activeTimerMode,
         isActive, pauseTimer, resumeTimer, stopTimer, skipPhase 
     } = useTimer();
+
+    const modeName = activeTimerMode === 'emom' ? 'EMOM' : activeTimerMode === 'amrap' ? 'AMRAP' : 'Circuit';
 
     const [showStopModal, setShowStopModal] = useState(false);
 
@@ -31,7 +33,7 @@ export default function ResumeTimerBanner() {
     const currentStyle = phaseColors[phase] || 'text-brand-500 border-brand-500/30 shadow-brand-500/10';
 
     const handleBannerClick = () => {
-        setActiveTimerMode('circuit');
+        // Navigate to the correct timer based on active mode
         navigate('/conditioning');
     };
 
@@ -84,9 +86,9 @@ export default function ResumeTimerBanner() {
                 isOpen={showStopModal}
                 onClose={() => setShowStopModal(false)}
                 onConfirm={() => { stopTimer(); setShowStopModal(false); }}
-                title="Stop Circuit?"
-                message="Are you sure you want to stop the current circuit? All progress will be lost."
-                confirmText="Stop Circuit"
+                title={`Stop ${modeName}?`}
+                message={`Are you sure you want to stop the current ${modeName.toLowerCase()}? All progress will be lost.`}
+                confirmText={`Stop ${modeName}`}
                 cancelText="Keep Going"
                 type="danger"
             />

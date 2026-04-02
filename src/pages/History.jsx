@@ -130,7 +130,7 @@ export default function History() {
     );
 
     return (
-        <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6 px-6">
+        <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6">
             <h1 className="text-3xl font-black tracking-tight text-white mb-2">History</h1>
 
             <div className="grid grid-cols-3 gap-3">

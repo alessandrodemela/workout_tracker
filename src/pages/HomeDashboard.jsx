@@ -10,7 +10,7 @@ import ConfirmModal from '../components/ConfirmModal';
 
 export default function HomeDashboard() {
     const navigate = useNavigate();
-    const { phase, stopTimer } = useTimer();
+    const { phase, stopTimer, activeTimerMode } = useTimer();
     const { isActive: isWorkoutActive } = useWorkout();
 
     const [pendingAction, setPendingAction] = useState(null);
@@ -138,10 +138,10 @@ export default function HomeDashboard() {
                     if (pendingAction) pendingAction();
                     setPendingAction(null);
                 }}
-                title="Stop Active Circuit?"
-                message="You have a conditioning circuit running. Starting a workout will end your current circuit session. Continue?"
-                confirmText="Stop Circuit & Start Workout"
-                cancelText="Back to Circuit"
+                title={`Stop Active ${activeTimerMode === 'emom' ? 'EMOM' : activeTimerMode === 'amrap' ? 'AMRAP' : 'Circuit'}?`}
+                message={`You have an active ${activeTimerMode === 'emom' ? 'EMOM' : activeTimerMode === 'amrap' ? 'AMRAP' : 'circuit'}. Starting a workout will end your current session. Continue?`}
+                confirmText={`Stop & Start Workout`}
+                cancelText="Back to Timer"
                 type="danger"
             />
         </div>

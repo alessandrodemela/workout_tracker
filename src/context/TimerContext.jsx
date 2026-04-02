@@ -6,12 +6,10 @@ export const useTimer = () => useContext(TimerContext);
 
 export const TimerProvider = ({ children }) => {
     const [config, setConfig] = useState({
-        prepareTime: 10,
-        workTime: 40,
-        restTime: 20,
-        rounds: 4,
-        cycles: 3,
-        cycleRestTime: 60
+        circuit: { prepareTime: 10, workTime: 40, restTime: 20, rounds: 4, cycles: 3, cycleRestTime: 60 },
+        emom: { prepareTime: 10, workTime: 60, restTime: 0, rounds: 10, cycles: 1, cycleRestTime: 0 },
+        amrap: { prepareTime: 10, workTime: 600, restTime: 0, rounds: 1, cycles: 1, cycleRestTime: 0 },
+        tabata: { prepareTime: 10, workTime: 20, restTime: 10, rounds: 8, cycles: 1, cycleRestTime: 0 }
     });
 
     const [isConfiguring, setIsConfiguring] = useState(true);
@@ -22,8 +20,17 @@ export const TimerProvider = ({ children }) => {
     const [currentCycle, setCurrentCycle] = useState(1);
     const [isActive, setIsActive] = useState(false);
 
+    const activeConfig = activeTimerMode ? config[activeTimerMode] : config.circuit;
+
     const updateConfig = (key, value) => {
-        setConfig(prev => ({ ...prev, [key]: Math.max(0, value) }));
+        if (!activeTimerMode) return;
+        setConfig(prev => ({
+            ...prev,
+            [activeTimerMode]: {
+                ...prev[activeTimerMode],
+                [key]: Math.max(0, value)
+            }
+        }));
     };
 
     const audioContextRef = React.useRef(null);
@@ -61,14 +68,25 @@ export const TimerProvider = ({ children }) => {
 
         if (phase === 'Prepare') {
             setPhase('Work');
-            setTimeLeft(config.workTime);
+            setTimeLeft(activeConfig.workTime);
         } else if (phase === 'Work') {
-            if (currentRound < config.rounds) {
+            if (currentRound < activeConfig.rounds && activeConfig.restTime > 0) {
                 setPhase('Rest');
-                setTimeLeft(config.restTime);
-            } else if (currentCycle < config.cycles) {
+                setTimeLeft(activeConfig.restTime);
+            } else if (currentRound < activeConfig.rounds && activeConfig.restTime === 0) {
+                // Skip the rest phase if 0, immediately start next Work round (e.g. EMOM)
+                setCurrentRound(prev => prev + 1);
+                setPhase('Work');
+                setTimeLeft(activeConfig.workTime);
+            } else if (currentCycle < activeConfig.cycles && activeConfig.cycleRestTime > 0) {
                 setPhase('CycleRest');
-                setTimeLeft(config.cycleRestTime);
+                setTimeLeft(activeConfig.cycleRestTime);
+            } else if (currentCycle < activeConfig.cycles && activeConfig.cycleRestTime === 0) {
+                // Skip cycle rest if 0
+                setCurrentCycle(prev => prev + 1);
+                setCurrentRound(1);
+                setPhase('Work');
+                setTimeLeft(activeConfig.workTime);
             } else {
                 setPhase('Done');
                 setIsActive(false);
@@ -76,12 +94,12 @@ export const TimerProvider = ({ children }) => {
         } else if (phase === 'Rest') {
             setCurrentRound(prev => prev + 1);
             setPhase('Work');
-            setTimeLeft(config.workTime);
+            setTimeLeft(activeConfig.workTime);
         } else if (phase === 'CycleRest') {
             setCurrentCycle(prev => prev + 1);
             setCurrentRound(1);
             setPhase('Work');
-            setTimeLeft(config.workTime);
+            setTimeLeft(activeConfig.workTime);
         }
     };
 
@@ -94,7 +112,7 @@ export const TimerProvider = ({ children }) => {
         playBeep(440, 'sine', 0.001); // Unlock audio context on user gesture
         setIsConfiguring(false);
         setPhase('Prepare');
-        setTimeLeft(config.prepareTime);
+        setTimeLeft(activeConfig.prepareTime);
         setCurrentRound(1);
         setCurrentCycle(1);
         setIsActive(true);
@@ -127,10 +145,10 @@ export const TimerProvider = ({ children }) => {
             handleNextPhase();
         }
         return () => clearInterval(interval);
-    }, [isActive, timeLeft, phase, currentRound, currentCycle, config]);
+    }, [isActive, timeLeft, phase, currentRound, currentCycle, activeConfig]);
 
     const value = {
-        config, updateConfig, isConfiguring, setIsConfiguring,
+        config: activeConfig, updateConfig, isConfiguring, setIsConfiguring,
         activeTimerMode, setActiveTimerMode,
         phase, setPhase, timeLeft, setTimeLeft, currentRound, setCurrentRound,
         currentCycle, setCurrentCycle, isActive, setIsActive,

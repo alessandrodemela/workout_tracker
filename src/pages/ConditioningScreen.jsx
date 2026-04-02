@@ -10,21 +10,20 @@ export default function ConditioningScreen() {
 
     const timerModes = [
         { id: 'circuit', title: 'Circuit', description: 'Custom work/rest intervals with multiple cycles', icon: Timer },
-        { id: 'emom', title: 'EMOM', description: 'Every Minute on the Minute (Coming Soon)', icon: Repeat },
-        { id: 'amrap', title: 'AMRAP', description: 'As Many Rounds As Possible (Coming Soon)', icon: Activity },
-        { id: 'tabata', title: 'Tabata', description: '20s work / 10s rest (Coming Soon)', icon: Zap },
+        { id: 'emom', title: 'EMOM', description: 'Every Minute on the Minute', icon: Repeat },
+        { id: 'amrap', title: 'AMRAP', description: 'As Many Rounds As Possible', icon: Activity },
     ];
 
     const handleSelectMode = (modeId) => {
-        if (modeId === 'circuit') {
-            setActiveTimerMode('circuit');
-        } else {
+        if (modeId === 'tabata') {
             setShowAlert(true);
+        } else {
+            setActiveTimerMode(modeId);
         }
     };
 
     // When a timer mode is active, render it filling the full available height
-    if (activeTimerMode === 'circuit') {
+    if (activeTimerMode && activeTimerMode !== 'tabata') {
         return (
             <div className="h-full flex flex-col">
                 <ConditioningTimer onClose={() => setActiveTimerMode(null)} />
@@ -45,7 +44,7 @@ export default function ConditioningScreen() {
                     <button
                         key={mode.id}
                         onClick={() => handleSelectMode(mode.id)}
-                        className={`w-full card-glass p-6 text-left flex justify-between items-center group relative overflow-hidden transition-all duration-300 ${mode.id === 'circuit' ? 'hover:border-brand-500 hover:shadow-[0_0_20px_rgba(212,255,0,0.1)] active:scale-95' : 'opacity-50'}`}
+                        className={`w-full card-glass p-6 text-left flex justify-between items-center group relative overflow-hidden transition-all duration-300 ${['circuit', 'emom', 'amrap'].includes(mode.id) ? 'hover:border-brand-500 hover:shadow-[0_0_20px_rgba(212,255,0,0.1)] active:scale-95' : 'opacity-50'}`}
                     >
                         <div className="flex items-center gap-4 relative z-10">
                             <div className="w-12 h-12 rounded-full bg-[#171717] flex items-center justify-center text-brand-500 border border-[#262626]">
