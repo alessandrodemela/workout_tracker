@@ -152,7 +152,7 @@ export const getWorkoutHistory = async () => {
     };
 };
 
-export const saveWorkoutSession = async (session) => {
+export const saveWorkoutSession = async (session, userId) => {
     const { Date: sessionDate, Session_Type, Mesocycle, Notes, Exercises } = session;
     
     // Calculate week number (or use current logic)
@@ -169,7 +169,8 @@ export const saveWorkoutSession = async (session) => {
         sets: ex.Sets,
         reps: ex.Reps,
         rpe: ex.RPE,
-        notes: (ex.Notes && Notes) ? `${ex.Notes}\n${Notes}` : (ex.Notes || Notes || '')
+        notes: (ex.Notes && Notes) ? `${ex.Notes}\n${Notes}` : (ex.Notes || Notes || ''),
+        user_id: userId
     }));
 
     const { error } = await supabase
@@ -180,7 +181,7 @@ export const saveWorkoutSession = async (session) => {
     return { status: 'success' };
 };
 
-export const saveFunctionalSession = async (session) => {
+export const saveFunctionalSession = async (session, userId) => {
     const { Date: sessionDate, Session_Type, Exercise, Notes } = session || {};
     const dateObj = new Date(sessionDate);
     const weekNum = getWeekNumber(dateObj);
@@ -192,7 +193,8 @@ export const saveFunctionalSession = async (session) => {
             week: weekNum,
             session_type: Session_Type,
             exercise: Exercise || 'Functional Circuit',
-            notes: Notes
+            notes: Notes,
+            user_id: userId
         }]);
 
     if (error) throw error;

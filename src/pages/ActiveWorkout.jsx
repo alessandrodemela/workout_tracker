@@ -8,6 +8,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import RestTimer from '../components/RestTimer';
 import ConfirmModal from '../components/ConfirmModal';
 import { useWorkout } from '../context/WorkoutContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function ActiveWorkout() {
     const navigate = useNavigate();
@@ -19,6 +20,7 @@ export default function ActiveWorkout() {
         exercises, setExercises, globalNotes, setGlobalNotes, 
         secondsElapsed, startWorkout, cancelWorkout, finishWorkout 
     } = useWorkout();
+    const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
@@ -192,12 +194,12 @@ export default function ActiveWorkout() {
 
         try {
             if (sessionType === 'Functional') {
-                await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes });
+                await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes }, user.id);
             } else {
                 // Add duration to global notes to be parsed by History
                 const durationNote = `[[D:${secondsElapsed}]]`;
                 const finalNotes = globalNotes ? `${globalNotes}\n${durationNote}` : durationNote;
-                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows });
+                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows }, user.id);
             }
             
             // Critical UX Fix: Invalidate history cache and show success briefly

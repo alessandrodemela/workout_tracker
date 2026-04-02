@@ -13,11 +13,14 @@ import { WorkoutProvider, useWorkout } from './context/WorkoutContext.jsx';
 import ResumeWorkoutBanner from './components/ResumeWorkoutBanner.jsx';
 import { TimerProvider, useTimer } from './context/TimerContext.jsx';
 import ResumeTimerBanner from './components/ResumeTimerBanner.jsx';
+import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import Login from './pages/Login.jsx';
 
 function AppContent() {
     const location = useLocation();
     const { isActive } = useWorkout();
     const { phase, activeTimerMode } = useTimer();
+    const { user, loading } = useAuth();
 
     useEffect(() => {
         const handlePopState = () => {
@@ -30,6 +33,12 @@ function AppContent() {
 
     const isTimerActive = phase !== 'Idle' && phase !== 'Done';
     const showNav = location.pathname !== '/';
+
+    if (loading) return null; // Or a loading spinner
+
+    if (!user) {
+        return <Login />;
+    }
 
     return (
         <div className="h-dvh flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30 overflow-hidden">
@@ -64,13 +73,15 @@ function AppContent() {
 
 function App() {
     return (
-        <TimerProvider>
-            <WorkoutProvider>
-                <Router>
-                    <AppContent />
-                </Router>
-            </WorkoutProvider>
-        </TimerProvider>
+        <AuthProvider>
+            <TimerProvider>
+                <WorkoutProvider>
+                    <Router>
+                        <AppContent />
+                    </Router>
+                </WorkoutProvider>
+            </TimerProvider>
+        </AuthProvider>
     );
 }
 

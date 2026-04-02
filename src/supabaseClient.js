@@ -6,7 +6,7 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || ''
 let client;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.error('[WorkoutTracker] Missing Supabase environment variables! Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
+  console.error('[Strive] Missing Supabase environment variables! Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.');
   // Provide a dummy client that doesn't crash on 'from()' but returns errors safely
   // Provide a dummy client that doesn't crash on chaining but returns errors safely
   const handler = {
