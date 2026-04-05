@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { LogIn, UserPlus, Loader2, AlertTriangle, Dumbbell } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, AlertTriangle, Dumbbell, Eye, EyeOff } from 'lucide-react';
 import PrimaryButton from '../components/PrimaryButton';
 
 const ValidationTooltip = ({ message, visible }) => {
@@ -22,6 +22,7 @@ const Login = () => {
     const [isForgot, setIsForgot] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(null);
     const [validationError, setValidationError] = useState({ field: null, message: '' });
@@ -120,13 +121,22 @@ const Login = () => {
                                         message={validationError.message}
                                         visible={validationError.field === 'password'}
                                     />
-                                    <input
-                                        type="password"
-                                        placeholder="••••••••"
-                                        value={password}
-                                        onChange={(e) => setPassword(e.target.value)}
-                                        className={`input-field ${validationError.field === 'password' ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
-                                    />
+                                    <div className="relative group">
+                                        <input
+                                            type={showPassword ? "text" : "password"}
+                                            placeholder="••••••••"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            className={`input-field pr-12 w-full ${validationError.field === 'password' ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-[#404040] hover:text-brand-500 transition-colors focus:outline-none"
+                                        >
+                                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
