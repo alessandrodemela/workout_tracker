@@ -5,7 +5,7 @@ import { useWorkout } from '../context/WorkoutContext';
 
 export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
     const [collapsed, setCollapsed] = useState(false);
-    const { setIsRestTimerExpanded, restTimer } = useWorkout();
+    const { setIsRestTimerExpanded, restTimer, startRestTimer } = useWorkout();
 
     const handleAddSet = () => {
         const lastSet = exercise.sets[exercise.sets.length - 1];
@@ -33,7 +33,13 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
         onUpdate({ ...exercise, sets: newSets });
 
         if (isNowCompleted && !restTimer.isActive) {
-            setIsRestTimerExpanded(true);
+            const defaultRestStr = localStorage.getItem('defaultRestTimer');
+            if (defaultRestStr && parseInt(defaultRestStr) > 0) {
+                startRestTimer(parseInt(defaultRestStr));
+                setIsRestTimerExpanded(true);
+            } else {
+                setIsRestTimerExpanded(true);
+            }
         }
     };
 

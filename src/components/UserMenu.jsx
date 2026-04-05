@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { LogOut, User, Settings, Info, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import AppInfoModal from './AppInfoModal';
 
 export default function UserMenu() {
     const { user, signOut } = useAuth();
@@ -21,9 +22,11 @@ export default function UserMenu() {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    const [showAppInfo, setShowAppInfo] = useState(false);
+
     const menuItems = [
-        { icon: <Settings className="w-4 h-4" />, label: 'Settings', onClick: () => console.log('Settings clicked') },
-        { icon: <Info className="w-4 h-4" />, label: 'App Info', onClick: () => console.log('Info clicked') },
+        { icon: <Settings className="w-4 h-4" />, label: 'Settings', onClick: () => navigate('/settings') },
+        { icon: <Info className="w-4 h-4" />, label: 'App Info', onClick: () => setShowAppInfo(true) },
     ];
 
     return (
@@ -98,6 +101,8 @@ export default function UserMenu() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <AppInfoModal isOpen={showAppInfo} onClose={() => setShowAppInfo(false)} />
         </div>
     );
 }

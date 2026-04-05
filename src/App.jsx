@@ -17,6 +17,7 @@ import { AuthProvider, useAuth } from './context/AuthContext.jsx';
 import Login from './pages/Login.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import Profile from './pages/Profile.jsx';
+import Settings from './pages/Settings.jsx';
 
 function AppContent() {
     const location = useLocation();
@@ -65,6 +66,7 @@ function AppContent() {
                     <Route path="/exercises" element={<ExerciseDatabase />} />
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />
+                    <Route path="/settings" element={<Settings />} />
                 </Routes>
             </main>
 

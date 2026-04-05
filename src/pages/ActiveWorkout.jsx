@@ -48,34 +48,45 @@ export default function ActiveWorkout() {
     useEffect(() => {
         if (isActive) return;
 
-        const stored = sessionStorage.getItem('templateExercises');
-        if (stored && masterExercises.length > 0) {
-            try {
-                const parsed = JSON.parse(stored);
-                setRawTemplate(parsed);
-                const splitName = parsed[0]?.Split || 'Template';
+        let stored = null;
+        try {
+            stored = sessionStorage.getItem('templateExercises');
+        } catch (err) {
+            console.error('SessionStorage error:', err);
+        }
 
-                // Check for missing exercises
-                const missing = parsed
-                    .map(t => t.Exercise_Name)
-                    .filter(name => name && !masterExercises.includes(name));
+        if (stored && stored !== 'undefined' && stored !== 'null') {
+            // Wait for exercisesData to load before parsing
+            if (masterExercises && masterExercises.length > 0) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    setRawTemplate(parsed);
+                    const splitName = parsed[0]?.Split || 'Template';
 
-                const uniqueMissing = [...new Set(missing)];
+                    // Check for missing exercises
+                    const missing = parsed
+                        .map(t => t.Exercise_Name)
+                        .filter(name => name && !masterExercises.includes(name));
 
-                if (uniqueMissing.length > 0) {
-                    setSessionType(splitName);
-                    setUnresolvedItems(uniqueMissing);
-                    // Initialize resolutions
-                    const initialRes = {};
-                    uniqueMissing.forEach(m => {
-                        initialRes[m] = { action: 'new', target: null };
-                    });
-                    setResolutions(initialRes);
-                } else {
-                    initializeWorkout(parsed, {}, splitName);
+                    const uniqueMissing = [...new Set(missing)];
+
+                    if (uniqueMissing.length > 0) {
+                        setSessionType(splitName);
+                        setUnresolvedItems(uniqueMissing);
+                        const initialRes = {};
+                        uniqueMissing.forEach(m => {
+                            initialRes[m] = { action: 'new', target: null };
+                        });
+                        setResolutions(initialRes);
+                    } else {
+                        initializeWorkout(parsed, {}, splitName);
+                    }
+                } catch (e) { 
+                    console.error('Failed to parse template exercises:', e);
+                    startWorkout({ sessionType: 'Standard' });
                 }
-            } catch (e) { console.error(e); }
-        } else if (!stored) {
+            }
+        } else {
             // New custom workout
             startWorkout({ sessionType: 'Standard' });
         }
