@@ -1,14 +1,11 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Trophy, Heart } from 'lucide-react';
-import useSWR from 'swr';
-import { API_URL, fetcher } from '../api';
 import pkg from '../../package.json';
 
 export default function AppInfoModal({ isOpen, onClose }) {
-    const { error } = useSWR(`${API_URL}/workout-history`, fetcher);
-
-    return (
+    const modalContent = (
         <AnimatePresence>
             {isOpen && (
                 <motion.div
@@ -16,14 +13,14 @@ export default function AppInfoModal({ isOpen, onClose }) {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     onClick={onClose}
-                    className="fixed inset-0 bg-[#000000]/80 backdrop-blur-xl z-[90] flex items-center justify-center p-6"
+                    className="fixed inset-0 bg-[#000000]/90 backdrop-blur-xl z-[9999] flex items-center justify-center p-6 overflow-y-auto"
                 >
                     <motion.div
                         initial={{ scale: 0.92, y: 10 }}
                         animate={{ scale: 1, y: 0 }}
                         exit={{ scale: 0.92, y: 10 }}
                         onClick={(e) => e.stopPropagation()}
-                        className="w-full max-w-sm card-glass !bg-[#050505] p-8 flex flex-col items-center gap-8 border-white/5 shadow-[0_0_80px_rgba(212,255,0,0.05)] border-[#1a1a1a]"
+                        className="w-full max-w-sm card-glass !bg-[#050505] p-8 flex flex-col items-center gap-8 border-white/5 shadow-[0_0_80px_rgba(212,255,0,0.05)] border-[#1a1a1a] my-auto"
                     >
                         {/* Logo & Version */}
                         <div className="flex flex-col items-center gap-5">
@@ -41,19 +38,6 @@ export default function AppInfoModal({ isOpen, onClose }) {
                                     <span className="text-[10px] font-black text-brand-500 uppercase tracking-[0.4em]">v{pkg.version}</span>
                                     <div className="w-1 h-1 rounded-full bg-[#171717]"></div>
                                     <span className="text-[9px] font-black text-[#808080] uppercase">April 2026</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Tech Badges */}
-                        <div className="w-full flex flex-col gap-2">
-                            <div className="flex items-center justify-between px-2">
-                                <span className="text-[9px] font-bold text-[#404040] uppercase tracking-widest">Platform Status</span>
-                                <div className="flex items-center gap-1.5">
-                                    <div className={`w-1.5 h-1.5 rounded-full ${navigator.onLine && !error ? 'bg-brand-500 animate-pulse-dot shadow-[0_0_8px_#D4FF00]' : 'bg-red-500'}`}></div>
-                                    <span className={`text-[9px] font-black uppercase ${navigator.onLine && !error ? 'text-brand-500' : 'text-red-500'}`}>
-                                        {navigator.onLine && !error ? 'Operational' : 'Degraded'}
-                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -77,4 +61,7 @@ export default function AppInfoModal({ isOpen, onClose }) {
             )}
         </AnimatePresence>
     );
+
+    return createPortal(modalContent, document.body);
 }
+
