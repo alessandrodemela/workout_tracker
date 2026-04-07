@@ -16,7 +16,7 @@ export default function ActiveWorkout() {
     const masterExercises = exercisesData?.exercises || [];
 
     const { 
-        isActive, date, setDate, sessionType, setSessionType, 
+        isActive, isContextReady, date, setDate, sessionType, setSessionType, 
         exercises, setExercises, globalNotes, setGlobalNotes, 
         secondsElapsed, startWorkout, cancelWorkout, finishWorkout 
     } = useWorkout();
@@ -47,8 +47,8 @@ export default function ActiveWorkout() {
     const [selectedExercise, setSelectedExercise] = useState('');
 
     useEffect(() => {
-        // 1. Critical: Handle uninitialized context — isActive === undefined means context not ready
-        if (isActive === undefined) return;
+        // 1. Critical: Wait for context to be ready (set synchronously via useLayoutEffect in provider)
+        if (!isContextReady) return;
 
         // 2. Critical: If already active, don't re-initialize
         if (isActive) return;
@@ -104,7 +104,7 @@ export default function ActiveWorkout() {
             setHasInitialized(true);
             startWorkout({ sessionType: 'Standard' });
         }
-    }, [masterExercises, isActive, exercisesData, startWorkout, setSessionType, hasInitialized]);
+    }, [isContextReady, masterExercises, isActive, exercisesData, startWorkout, setSessionType, hasInitialized]);
 
     const initializeWorkout = (templateData, resMap = {}, splitName = null) => {
         const initialExercises = templateData
@@ -264,13 +264,10 @@ export default function ActiveWorkout() {
         } catch (e) { return false; }
     }, []);
 
-    // Determine if context is ready (isActive is a boolean, not undefined)
-    const isContextReady = isActive !== undefined;
-
     // Show loading spinner:
-    // - Context not ready yet, OR
+    // - Context not ready yet (useLayoutEffect hasn't fired), OR
     // - Template flow but masterExercises haven't loaded yet, OR
-    // - Context ready but we haven't initialized the workout yet (isActive is still false and hasInitialized is false)
+    // - Context ready but workout hasn't been initialized yet
     const isLoading =
         !isContextReady ||
         (isTemplate && (!exercisesData || masterExercises.length === 0) && !isActive) ||

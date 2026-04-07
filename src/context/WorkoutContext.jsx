@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react';
 
 const WorkoutContext = createContext();
 
 export function WorkoutProvider({ children }) {
-    const [isActive, setIsActive] = useState(undefined);
+    // isActive is always a boolean — no undefined state that causes black screens on iOS
+    const [isActive, setIsActive] = useState(false);
+    // isContextReady flips true synchronously on first layout, giving consumers a reliable gate
+    const [isContextReady, setIsContextReady] = useState(false);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [sessionType, setSessionType] = useState('Standard');
     const [exercises, setExercises] = useState([]);
@@ -11,11 +14,10 @@ export function WorkoutProvider({ children }) {
     const [secondsElapsed, setSecondsElapsed] = useState(0);
     const [restTimer, setRestTimer] = useState({ isActive: false, secondsRemaining: 0, duration: 0 });
     const [isRestTimerExpanded, setIsRestTimerExpanded] = useState(false);
-    useEffect(() => {
-        if (isActive === undefined) {
-            setIsActive(false);
-        }
-    }, [isActive]);
+    // Use useLayoutEffect so isContextReady is true before the first paint
+    useLayoutEffect(() => {
+        setIsContextReady(true);
+    }, []);
     useEffect(() => {
         if (isActive && Notification.permission === 'default') {
             Notification.requestPermission();
@@ -154,6 +156,7 @@ export function WorkoutProvider({ children }) {
 
     const value = useMemo(() => ({
         isActive,
+        isContextReady,
         setIsActive,
         date,
         setDate,
@@ -176,10 +179,10 @@ export function WorkoutProvider({ children }) {
         cancelWorkout,
         finishWorkout
     }), [
-        isActive, date, sessionType, exercises, globalNotes, 
+        isActive, isContextReady, date, sessionType, exercises, globalNotes,
         secondsElapsed, restTimer, isRestTimerExpanded,
-        updateExercises, addExercise, startRestTimer, 
-        stopRestTimer, addRestTime, startWorkout, 
+        updateExercises, addExercise, startRestTimer,
+        stopRestTimer, addRestTime, startWorkout,
         cancelWorkout, finishWorkout
     ]);
 
