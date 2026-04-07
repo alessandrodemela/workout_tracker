@@ -25,6 +25,7 @@ export default function ActiveWorkout() {
     const [isSaved, setIsSaved] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
+    const [hasInitialized, setHasInitialized] = useState(false);
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -46,25 +47,28 @@ export default function ActiveWorkout() {
     const [selectedExercise, setSelectedExercise] = useState('');
 
     useEffect(() => {
-        // 1. Critical: Handle uninitialized context
+        // 1. Critical: Handle uninitialized context — isActive === undefined means context not ready
         if (isActive === undefined) return;
 
         // 2. Critical: If already active, don't re-initialize
         if (isActive) return;
 
-        // 3. Check for template in sessionStorage
+        // 3. Prevent double-initialization (StrictMode / remounts)
+        if (hasInitialized) return;
+
+        // 4. Check for template in sessionStorage
         let stored = null;
         try {
             stored = sessionStorage.getItem('templateExercises');
         } catch (err) {
-            console.error('SessionStorage error:', err);
+            console.error('SessionStorage read error:', err);
         }
 
-        const isTemplate = stored && stored !== 'undefined' && stored !== 'null';
+        const isTemplateFlow = stored && stored !== 'undefined' && stored !== 'null';
 
-        // 4. Only wait for master exercises data if we have a template to resolve
-        if (isTemplate) {
-            if (!exercisesData) return; // Wait for SWR to finish
+        // 5. Template path: wait until masterExercises are loaded before proceeding
+        if (isTemplateFlow) {
+            if (!exercisesData || masterExercises.length === 0) return; // Wait for SWR
 
             try {
                 const parsed = JSON.parse(stored);
@@ -77,6 +81,8 @@ export default function ActiveWorkout() {
 
                 const uniqueMissing = [...new Set(missing)];
 
+                setHasInitialized(true);
+
                 if (uniqueMissing.length > 0) {
                     setSessionType(splitName);
                     setUnresolvedItems(uniqueMissing);
@@ -88,15 +94,17 @@ export default function ActiveWorkout() {
                 } else {
                     initializeWorkout(parsed, {}, splitName);
                 }
-            } catch (e) { 
+            } catch (e) {
                 console.error('Failed to parse template exercises:', e);
+                setHasInitialized(true);
                 startWorkout({ sessionType: 'Standard' });
             }
         } else {
-            // New custom workout - doesn't need masterExercises yet
+            // 6. Plain custom workout — no master exercises needed
+            setHasInitialized(true);
             startWorkout({ sessionType: 'Standard' });
         }
-    }, [masterExercises, isActive, exercisesData, startWorkout, setSessionType]);
+    }, [masterExercises, isActive, exercisesData, startWorkout, setSessionType, hasInitialized]);
 
     const initializeWorkout = (templateData, resMap = {}, splitName = null) => {
         const initialExercises = templateData
@@ -165,7 +173,11 @@ export default function ActiveWorkout() {
     };
 
     const confirmCancelWorkout = () => {
-        sessionStorage.removeItem('templateExercises');
+        try {
+            sessionStorage.removeItem('templateExercises');
+        } catch (err) {
+            console.error('SessionStorage remove error (cancel):', err);
+        }
         cancelWorkout();
         navigate('/home');
     };
@@ -225,7 +237,11 @@ export default function ActiveWorkout() {
             await mutate(`${API_URL}/workout-history`);
             
             setTimeout(() => {
-                sessionStorage.removeItem('templateExercises');
+                try {
+                    sessionStorage.removeItem('templateExercises');
+                } catch (err) {
+                    console.error('SessionStorage remove error (finish):', err);
+                }
                 finishWorkout();
                 navigate('/history');
             }, 1500);
@@ -248,13 +264,24 @@ export default function ActiveWorkout() {
         } catch (e) { return false; }
     }, []);
 
-    // Fallback UI for when context or data is not initialized (Prevents Black Screen)
-    if (isActive === undefined || (isTemplate && !exercisesData && !isActive)) {
+    // Determine if context is ready (isActive is a boolean, not undefined)
+    const isContextReady = isActive !== undefined;
+
+    // Show loading spinner:
+    // - Context not ready yet, OR
+    // - Template flow but masterExercises haven't loaded yet, OR
+    // - Context ready but we haven't initialized the workout yet (isActive is still false and hasInitialized is false)
+    const isLoading =
+        !isContextReady ||
+        (isTemplate && (!exercisesData || masterExercises.length === 0) && !isActive) ||
+        (!isActive && !hasInitialized && unresolvedItems.length === 0);
+
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-                <h2 className="text-white font-bold text-lg">Initializing Workout context...</h2>
-                <p className="text-[#A3A3A3] text-sm mt-2">Connecting to secure database</p>
+                <h2 className="text-white font-bold text-lg">Initializing workout…</h2>
+                <p className="text-[#A3A3A3] text-sm mt-2">Loading your session data</p>
             </div>
         );
     }
