@@ -46,30 +46,31 @@ export default function ActiveWorkout() {
     const [selectedExercise, setSelectedExercise] = useState('');
 
     useEffect(() => {
-        // 1. Critical: Handle uninitialized context or race conditions on mount
+        // 1. Critical: Handle uninitialized context
         if (isActive === undefined) return;
+
+        // 2. Critical: If already active, don't re-initialize
         if (isActive) return;
 
-        // 2. Critical: Wait for master data if we have a template to resolve
-        // This prevents the "Black Screen" on iOS by ensuring we don't start
-        // until we know if we need the resolution screen or not.
-        if (!exercisesData) return;
-
+        // 3. Check for template in sessionStorage
         let stored = null;
         try {
             stored = sessionStorage.getItem('templateExercises');
         } catch (err) {
-            // On some mobile browsers sessionStorage might be restricted or slow
             console.error('SessionStorage error:', err);
         }
 
-        if (stored && stored !== 'undefined' && stored !== 'null') {
+        const isTemplate = stored && stored !== 'undefined' && stored !== 'null';
+
+        // 4. Only wait for master exercises data if we have a template to resolve
+        if (isTemplate) {
+            if (!exercisesData) return; // Wait for SWR to finish
+
             try {
                 const parsed = JSON.parse(stored);
                 setRawTemplate(parsed);
                 const splitName = parsed[0]?.Split || 'Template';
 
-                // Check for missing exercises
                 const missing = parsed
                     .map(t => t.Exercise_Name)
                     .filter(name => name && !masterExercises.includes(name));
@@ -92,7 +93,7 @@ export default function ActiveWorkout() {
                 startWorkout({ sessionType: 'Standard' });
             }
         } else {
-            // New custom workout
+            // New custom workout - doesn't need masterExercises yet
             startWorkout({ sessionType: 'Standard' });
         }
     }, [masterExercises, isActive, exercisesData, startWorkout, setSessionType]);
@@ -239,8 +240,16 @@ export default function ActiveWorkout() {
         }
     };
 
+    // Identify if we're starting from a template to determine loading needs
+    const isTemplate = useMemo(() => {
+        try {
+            const s = sessionStorage.getItem('templateExercises');
+            return s && s !== 'undefined' && s !== 'null';
+        } catch (e) { return false; }
+    }, []);
+
     // Fallback UI for when context or data is not initialized (Prevents Black Screen)
-    if (isActive === undefined || (exercisesData === undefined && !isActive)) {
+    if (isActive === undefined || (isTemplate && !exercisesData && !isActive)) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>

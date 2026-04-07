@@ -3,7 +3,7 @@ import React, { createContext, useContext, useState, useEffect, useRef, useCallb
 const WorkoutContext = createContext();
 
 export function WorkoutProvider({ children }) {
-    const [isActive, setIsActive] = useState(false);
+    const [isActive, setIsActive] = useState(undefined);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [sessionType, setSessionType] = useState('Standard');
     const [exercises, setExercises] = useState([]);
@@ -11,7 +11,11 @@ export function WorkoutProvider({ children }) {
     const [secondsElapsed, setSecondsElapsed] = useState(0);
     const [restTimer, setRestTimer] = useState({ isActive: false, secondsRemaining: 0, duration: 0 });
     const [isRestTimerExpanded, setIsRestTimerExpanded] = useState(false);
-
+    useEffect(() => {
+        if (isActive === undefined) {
+            setIsActive(false);
+        }
+    }, [isActive]);
     useEffect(() => {
         if (isActive && Notification.permission === 'default') {
             Notification.requestPermission();
