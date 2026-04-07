@@ -23,7 +23,7 @@ export default function LandingScreen() {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen gap-6 animate-fade-in px-6 text-center bg-[#000000]">
             <h1 className="text-5xl font-black tracking-tighter text-white">
-                GymTracker
+                Strive
                 <span className="text-brand-500">.</span>
             </h1>
 

@@ -3,7 +3,7 @@ import useSWR from 'swr';
 import { ChevronDown, Clock, Dumbbell, TrendingUp, Calendar, Search } from 'lucide-react';
 import { API_URL, fetcher } from '../api';
 
-export default function History() {
+export default function History({ isEmbedded = false }) {
     const { data: history, error } = useSWR(`${API_URL}/workout-history`, fetcher);
     const [timeFilter, setTimeFilter] = useState('All Time');
     const [expandedSession, setExpandedSession] = useState(null);
@@ -148,31 +148,35 @@ export default function History() {
     );
 
     return (
-        <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6">
-            <h1 className="text-3xl font-black tracking-tight text-white mb-2">History</h1>
+        <div className={`flex flex-col gap-6 ${isEmbedded ? '' : 'pb-32 pt-6'} animate-fade-in`}>
+            {!isEmbedded && (
+                <>
+                    <h1 className="text-3xl font-black tracking-tight text-white mb-2">History</h1>
 
-            <div className="grid grid-cols-3 gap-3">
-                <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] mb-1">Workouts</span>
-                    <span className="text-2xl font-black text-white">{stats.totalWorkouts}</span>
-                </div>
-                <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] mb-1">Volume</span>
-                    <div className="flex items-baseline gap-0.5">
-                        <span className="text-2xl font-black text-white">{stats.totalVolume}</span>
-                        <span className="text-xs font-bold text-[#A3A3A3]">t</span>
+                    <div className="grid grid-cols-3 gap-3">
+                        <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] mb-1">Workouts</span>
+                            <span className="text-2xl font-black text-white">{stats.totalWorkouts}</span>
+                        </div>
+                        <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] mb-1">Volume</span>
+                            <div className="flex items-baseline gap-0.5">
+                                <span className="text-2xl font-black text-white">{stats.totalVolume}</span>
+                                <span className="text-xs font-bold text-[#A3A3A3]">t</span>
+                            </div>
+                        </div>
+                        <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">
+                            <span className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] mb-1">Avg Time</span>
+                            <div className="flex items-baseline gap-0.5">
+                                <span className="text-2xl font-black text-white">{stats.avgTime}</span>
+                                <span className="text-xs font-bold text-[#A3A3A3]">m</span>
+                            </div>
+                        </div>
                     </div>
-                </div>
-                <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">
-                    <span className="text-[9px] font-black uppercase tracking-widest text-[#A3A3A3] mb-1">Avg Time</span>
-                    <div className="flex items-baseline gap-0.5">
-                        <span className="text-2xl font-black text-white">{stats.avgTime}</span>
-                        <span className="text-xs font-bold text-[#A3A3A3]">m</span>
-                    </div>
-                </div>
-            </div>
+                </>
+            )}
 
-            <div className="flex items-center bg-[#0A0A0A] border border-[#171717] rounded-full p-1">
+            <div className={`flex items-center bg-[#0A0A0A] border border-[#171717] rounded-full p-1 ${isEmbedded ? 'mt-2' : ''}`}>
                 {['All Time', 'This Week', 'This Month'].map(f => (
                     <button
                         key={f}

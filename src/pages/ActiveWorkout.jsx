@@ -8,6 +8,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import RestTimer from '../components/RestTimer';
 import ConfirmModal from '../components/ConfirmModal';
 import { useWorkout } from '../context/WorkoutContext';
+import { useAuth } from '../context/AuthContext';
 
 export default function ActiveWorkout() {
     const navigate = useNavigate();
@@ -15,14 +16,16 @@ export default function ActiveWorkout() {
     const masterExercises = exercisesData?.exercises || [];
 
     const { 
-        isActive, date, setDate, sessionType, setSessionType, 
+        isActive, isContextReady, date, setDate, sessionType, setSessionType, 
         exercises, setExercises, globalNotes, setGlobalNotes, 
         secondsElapsed, startWorkout, cancelWorkout, finishWorkout 
     } = useWorkout();
+    const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
     const [alertConfig, setAlertConfig] = useState({ isOpen: false, title: '', message: '' });
+    const [hasInitialized, setHasInitialized] = useState(false);
 
     const formatDuration = (sec) => {
         const h = Math.floor(sec / 3600);
@@ -44,26 +47,45 @@ export default function ActiveWorkout() {
     const [selectedExercise, setSelectedExercise] = useState('');
 
     useEffect(() => {
+        // 1. Critical: Wait for context to be ready (set synchronously via useLayoutEffect in provider)
+        if (!isContextReady) return;
+
+        // 2. Critical: If already active, don't re-initialize
         if (isActive) return;
 
-        const stored = sessionStorage.getItem('templateExercises');
-        if (stored && masterExercises.length > 0) {
+        // 3. Prevent double-initialization (StrictMode / remounts)
+        if (hasInitialized) return;
+
+        // 4. Check for template in sessionStorage
+        let stored = null;
+        try {
+            stored = sessionStorage.getItem('templateExercises');
+        } catch (err) {
+            console.error('SessionStorage read error:', err);
+        }
+
+        const isTemplateFlow = stored && stored !== 'undefined' && stored !== 'null';
+
+        // 5. Template path: wait until masterExercises are loaded before proceeding
+        if (isTemplateFlow) {
+            if (!exercisesData || masterExercises.length === 0) return; // Wait for SWR
+
             try {
                 const parsed = JSON.parse(stored);
                 setRawTemplate(parsed);
                 const splitName = parsed[0]?.Split || 'Template';
 
-                // Check for missing exercises
                 const missing = parsed
                     .map(t => t.Exercise_Name)
                     .filter(name => name && !masterExercises.includes(name));
 
                 const uniqueMissing = [...new Set(missing)];
 
+                setHasInitialized(true);
+
                 if (uniqueMissing.length > 0) {
                     setSessionType(splitName);
                     setUnresolvedItems(uniqueMissing);
-                    // Initialize resolutions
                     const initialRes = {};
                     uniqueMissing.forEach(m => {
                         initialRes[m] = { action: 'new', target: null };
@@ -72,12 +94,17 @@ export default function ActiveWorkout() {
                 } else {
                     initializeWorkout(parsed, {}, splitName);
                 }
-            } catch (e) { console.error(e); }
-        } else if (!stored) {
-            // New custom workout
+            } catch (e) {
+                console.error('Failed to parse template exercises:', e);
+                setHasInitialized(true);
+                startWorkout({ sessionType: 'Standard' });
+            }
+        } else {
+            // 6. Plain custom workout — no master exercises needed
+            setHasInitialized(true);
             startWorkout({ sessionType: 'Standard' });
         }
-    }, [masterExercises, isActive]);
+    }, [isContextReady, masterExercises, isActive, exercisesData, startWorkout, setSessionType, hasInitialized]);
 
     const initializeWorkout = (templateData, resMap = {}, splitName = null) => {
         const initialExercises = templateData
@@ -146,7 +173,11 @@ export default function ActiveWorkout() {
     };
 
     const confirmCancelWorkout = () => {
-        sessionStorage.removeItem('templateExercises');
+        try {
+            sessionStorage.removeItem('templateExercises');
+        } catch (err) {
+            console.error('SessionStorage remove error (cancel):', err);
+        }
         cancelWorkout();
         navigate('/home');
     };
@@ -192,12 +223,12 @@ export default function ActiveWorkout() {
 
         try {
             if (sessionType === 'Functional') {
-                await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes });
+                await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes }, user.id);
             } else {
                 // Add duration to global notes to be parsed by History
                 const durationNote = `[[D:${secondsElapsed}]]`;
                 const finalNotes = globalNotes ? `${globalNotes}\n${durationNote}` : durationNote;
-                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows });
+                await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows }, user.id);
             }
             
             // Critical UX Fix: Invalidate history cache and show success briefly
@@ -206,7 +237,11 @@ export default function ActiveWorkout() {
             await mutate(`${API_URL}/workout-history`);
             
             setTimeout(() => {
-                sessionStorage.removeItem('templateExercises');
+                try {
+                    sessionStorage.removeItem('templateExercises');
+                } catch (err) {
+                    console.error('SessionStorage remove error (finish):', err);
+                }
                 finishWorkout();
                 navigate('/history');
             }, 1500);
@@ -220,6 +255,33 @@ export default function ActiveWorkout() {
             });
         }
     };
+
+    // Identify if we're starting from a template to determine loading needs
+    const isTemplate = useMemo(() => {
+        try {
+            const s = sessionStorage.getItem('templateExercises');
+            return s && s !== 'undefined' && s !== 'null';
+        } catch (e) { return false; }
+    }, []);
+
+    // Show loading spinner:
+    // - Context not ready yet (useLayoutEffect hasn't fired), OR
+    // - Template flow but masterExercises haven't loaded yet, OR
+    // - Context ready but workout hasn't been initialized yet
+    const isLoading =
+        !isContextReady ||
+        (isTemplate && (!exercisesData || masterExercises.length === 0) && !isActive) ||
+        (!isActive && !hasInitialized && unresolvedItems.length === 0);
+
+    if (isLoading) {
+        return (
+            <div className="flex-1 bg-black flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h2 className="text-white font-bold text-lg">Initializing workout…</h2>
+                <p className="text-[#A3A3A3] text-sm mt-2">Loading your session data</p>
+            </div>
+        );
+    }
 
     // UI: Resolution Screen
     if (unresolvedItems.length > 0) {

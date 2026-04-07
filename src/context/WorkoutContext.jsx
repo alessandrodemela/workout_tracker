@@ -1,9 +1,12 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo, useLayoutEffect } from 'react';
 
 const WorkoutContext = createContext();
 
 export function WorkoutProvider({ children }) {
+    // isActive is always a boolean — no undefined state that causes black screens on iOS
     const [isActive, setIsActive] = useState(false);
+    // isContextReady flips true synchronously on first layout, giving consumers a reliable gate
+    const [isContextReady, setIsContextReady] = useState(false);
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [sessionType, setSessionType] = useState('Standard');
     const [exercises, setExercises] = useState([]);
@@ -11,9 +14,12 @@ export function WorkoutProvider({ children }) {
     const [secondsElapsed, setSecondsElapsed] = useState(0);
     const [restTimer, setRestTimer] = useState({ isActive: false, secondsRemaining: 0, duration: 0 });
     const [isRestTimerExpanded, setIsRestTimerExpanded] = useState(false);
-
+    // Use useLayoutEffect so isContextReady is true before the first paint
+    useLayoutEffect(() => {
+        setIsContextReady(true);
+    }, []);
     useEffect(() => {
-        if (isActive && Notification.permission === 'default') {
+        if (isActive && typeof Notification !== 'undefined' && Notification.permission === 'default') {
             Notification.requestPermission();
         }
     }, [isActive]);
@@ -57,11 +63,15 @@ export function WorkoutProvider({ children }) {
     };
 
     const showNotification = () => {
-        if (Notification.permission === 'granted') {
-            new Notification('Rest Timer Finished!', {
-                body: 'Time to start your next set!',
-                icon: '/logo192.png' // Adjust if needed
-            });
+        try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification('Rest Timer Finished!', {
+                    body: 'Time to start your next set!',
+                    icon: '/logo192.png'
+                });
+            }
+        } catch (e) {
+            console.warn('Notification API not available:', e);
         }
     };
 
@@ -92,87 +102,96 @@ export function WorkoutProvider({ children }) {
         return () => clearInterval(interval);
     }, [restTimer.isActive, restTimer.secondsRemaining]);
 
-    const startRestTimer = (seconds) => {
+    const startRestTimer = useCallback((seconds) => {
         playBeep(); // Minimal sound to 'unlock' context on user gesture
         setRestTimer({
             isActive: true,
             secondsRemaining: seconds,
             duration: seconds
         });
-    };
+    }, []);
 
-    const stopRestTimer = () => {
+    const stopRestTimer = useCallback(() => {
         setRestTimer({
             isActive: false,
             secondsRemaining: 0,
             duration: 0
         });
-    };
+    }, []);
 
-    const addRestTime = (seconds) => {
+    const addRestTime = useCallback((seconds) => {
         setRestTimer(prev => ({
             ...prev,
             secondsRemaining: prev.secondsRemaining + seconds
         }));
-    };
+    }, []);
 
-    const startWorkout = (initialData = {}) => {
+    const startWorkout = useCallback((initialData = {}) => {
         setDate(initialData.date || new Date().toISOString().split('T')[0]);
         setSessionType(initialData.sessionType || 'Standard');
         setExercises(initialData.exercises || []);
         setGlobalNotes(initialData.globalNotes || '');
         setSecondsElapsed(initialData.secondsElapsed || 0);
         setIsActive(true);
-    };
+    }, []);
 
-    const cancelWorkout = () => {
+    const cancelWorkout = useCallback(() => {
         setIsActive(false);
         setExercises([]);
         setSecondsElapsed(0);
         setGlobalNotes('');
         stopRestTimer();
-    };
+    }, [stopRestTimer]);
 
-    const finishWorkout = () => {
+    const finishWorkout = useCallback(() => {
         setIsActive(false);
         setExercises([]);
         setSecondsElapsed(0);
         setGlobalNotes('');
-    };
+    }, []);
 
-    const updateExercises = (newExercises) => {
+    const updateExercises = useCallback((newExercises) => {
         setExercises(newExercises);
-    };
+    }, []);
 
-    const addExercise = (exerciseName) => {
+    const addExercise = useCallback((exerciseName) => {
         setExercises(prev => [...prev, { name: exerciseName, sets: [{ kg: '', reps: '', rpe: 8, completed: false }] }]);
-    };
+    }, []);
+
+    const value = useMemo(() => ({
+        isActive,
+        isContextReady,
+        setIsActive,
+        date,
+        setDate,
+        sessionType,
+        setSessionType,
+        exercises,
+        setExercises: updateExercises,
+        addExercise,
+        globalNotes,
+        setGlobalNotes,
+        secondsElapsed,
+        setSecondsElapsed,
+        restTimer,
+        startRestTimer,
+        stopRestTimer,
+        addRestTime,
+        isRestTimerExpanded,
+        setIsRestTimerExpanded,
+        startWorkout,
+        cancelWorkout,
+        finishWorkout
+    }), [
+        isActive, isContextReady, date, sessionType, exercises, globalNotes,
+        secondsElapsed, restTimer, isRestTimerExpanded,
+        updateExercises, addExercise, startRestTimer,
+        stopRestTimer, addRestTime, startWorkout,
+        cancelWorkout, finishWorkout
+    ]);
 
     return (
-        <WorkoutContext.Provider value={{
-            isActive,
-            setIsActive,
-            date,
-            setDate,
-            sessionType,
-            setSessionType,
-            exercises,
-            setExercises: updateExercises,
-            addExercise,
-            globalNotes,
-            setGlobalNotes,
-            secondsElapsed,
-            setSecondsElapsed,
-            restTimer,
-            startRestTimer,
-            stopRestTimer,
-            addRestTime,
-            isRestTimerExpanded,
-            setIsRestTimerExpanded,
-            startWorkout,
-            cancelWorkout,
-            finishWorkout
-        }}>
+        <WorkoutContext.Provider value={value}>
             {children}
         </WorkoutContext.Provider>
     );
