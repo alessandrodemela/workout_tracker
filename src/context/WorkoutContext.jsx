@@ -19,7 +19,7 @@ export function WorkoutProvider({ children }) {
         setIsContextReady(true);
     }, []);
     useEffect(() => {
-        if (isActive && Notification.permission === 'default') {
+        if (isActive && typeof Notification !== 'undefined' && Notification.permission === 'default') {
             Notification.requestPermission();
         }
     }, [isActive]);
@@ -63,11 +63,15 @@ export function WorkoutProvider({ children }) {
     };
 
     const showNotification = () => {
-        if (Notification.permission === 'granted') {
-            new Notification('Rest Timer Finished!', {
-                body: 'Time to start your next set!',
-                icon: '/logo192.png' // Adjust if needed
-            });
+        try {
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+                new Notification('Rest Timer Finished!', {
+                    body: 'Time to start your next set!',
+                    icon: '/logo192.png'
+                });
+            }
+        } catch (e) {
+            console.warn('Notification API not available:', e);
         }
     };
 

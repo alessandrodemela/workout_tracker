@@ -275,7 +275,7 @@ export default function ActiveWorkout() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+            <div className="flex-1 bg-black flex flex-col items-center justify-center p-6 text-center">
                 <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
                 <h2 className="text-white font-bold text-lg">Initializing workout…</h2>
                 <p className="text-[#A3A3A3] text-sm mt-2">Loading your session data</p>
