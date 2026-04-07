@@ -46,51 +46,56 @@ export default function ActiveWorkout() {
     const [selectedExercise, setSelectedExercise] = useState('');
 
     useEffect(() => {
+        // 1. Critical: Handle uninitialized context or race conditions on mount
+        if (isActive === undefined) return;
         if (isActive) return;
+
+        // 2. Critical: Wait for master data if we have a template to resolve
+        // This prevents the "Black Screen" on iOS by ensuring we don't start
+        // until we know if we need the resolution screen or not.
+        if (!exercisesData) return;
 
         let stored = null;
         try {
             stored = sessionStorage.getItem('templateExercises');
         } catch (err) {
+            // On some mobile browsers sessionStorage might be restricted or slow
             console.error('SessionStorage error:', err);
         }
 
         if (stored && stored !== 'undefined' && stored !== 'null') {
-            // Wait for exercisesData to load before parsing
-            if (masterExercises && masterExercises.length > 0) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    setRawTemplate(parsed);
-                    const splitName = parsed[0]?.Split || 'Template';
+            try {
+                const parsed = JSON.parse(stored);
+                setRawTemplate(parsed);
+                const splitName = parsed[0]?.Split || 'Template';
 
-                    // Check for missing exercises
-                    const missing = parsed
-                        .map(t => t.Exercise_Name)
-                        .filter(name => name && !masterExercises.includes(name));
+                // Check for missing exercises
+                const missing = parsed
+                    .map(t => t.Exercise_Name)
+                    .filter(name => name && !masterExercises.includes(name));
 
-                    const uniqueMissing = [...new Set(missing)];
+                const uniqueMissing = [...new Set(missing)];
 
-                    if (uniqueMissing.length > 0) {
-                        setSessionType(splitName);
-                        setUnresolvedItems(uniqueMissing);
-                        const initialRes = {};
-                        uniqueMissing.forEach(m => {
-                            initialRes[m] = { action: 'new', target: null };
-                        });
-                        setResolutions(initialRes);
-                    } else {
-                        initializeWorkout(parsed, {}, splitName);
-                    }
-                } catch (e) { 
-                    console.error('Failed to parse template exercises:', e);
-                    startWorkout({ sessionType: 'Standard' });
+                if (uniqueMissing.length > 0) {
+                    setSessionType(splitName);
+                    setUnresolvedItems(uniqueMissing);
+                    const initialRes = {};
+                    uniqueMissing.forEach(m => {
+                        initialRes[m] = { action: 'new', target: null };
+                    });
+                    setResolutions(initialRes);
+                } else {
+                    initializeWorkout(parsed, {}, splitName);
                 }
+            } catch (e) { 
+                console.error('Failed to parse template exercises:', e);
+                startWorkout({ sessionType: 'Standard' });
             }
         } else {
             // New custom workout
             startWorkout({ sessionType: 'Standard' });
         }
-    }, [masterExercises, isActive]);
+    }, [masterExercises, isActive, exercisesData, startWorkout, setSessionType]);
 
     const initializeWorkout = (templateData, resMap = {}, splitName = null) => {
         const initialExercises = templateData
@@ -233,6 +238,17 @@ export default function ActiveWorkout() {
             });
         }
     };
+
+    // Fallback UI for when context or data is not initialized (Prevents Black Screen)
+    if (isActive === undefined || (exercisesData === undefined && !isActive)) {
+        return (
+            <div className="min-h-screen bg-black flex flex-col items-center justify-center p-6 text-center">
+                <div className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+                <h2 className="text-white font-bold text-lg">Initializing Workout context...</h2>
+                <p className="text-[#A3A3A3] text-sm mt-2">Connecting to secure database</p>
+            </div>
+        );
+    }
 
     // UI: Resolution Screen
     if (unresolvedItems.length > 0) {

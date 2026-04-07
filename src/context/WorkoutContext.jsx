@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 const WorkoutContext = createContext();
 
@@ -92,87 +92,95 @@ export function WorkoutProvider({ children }) {
         return () => clearInterval(interval);
     }, [restTimer.isActive, restTimer.secondsRemaining]);
 
-    const startRestTimer = (seconds) => {
+    const startRestTimer = useCallback((seconds) => {
         playBeep(); // Minimal sound to 'unlock' context on user gesture
         setRestTimer({
             isActive: true,
             secondsRemaining: seconds,
             duration: seconds
         });
-    };
+    }, []);
 
-    const stopRestTimer = () => {
+    const stopRestTimer = useCallback(() => {
         setRestTimer({
             isActive: false,
             secondsRemaining: 0,
             duration: 0
         });
-    };
+    }, []);
 
-    const addRestTime = (seconds) => {
+    const addRestTime = useCallback((seconds) => {
         setRestTimer(prev => ({
             ...prev,
             secondsRemaining: prev.secondsRemaining + seconds
         }));
-    };
+    }, []);
 
-    const startWorkout = (initialData = {}) => {
+    const startWorkout = useCallback((initialData = {}) => {
         setDate(initialData.date || new Date().toISOString().split('T')[0]);
         setSessionType(initialData.sessionType || 'Standard');
         setExercises(initialData.exercises || []);
         setGlobalNotes(initialData.globalNotes || '');
         setSecondsElapsed(initialData.secondsElapsed || 0);
         setIsActive(true);
-    };
+    }, []);
 
-    const cancelWorkout = () => {
+    const cancelWorkout = useCallback(() => {
         setIsActive(false);
         setExercises([]);
         setSecondsElapsed(0);
         setGlobalNotes('');
         stopRestTimer();
-    };
+    }, [stopRestTimer]);
 
-    const finishWorkout = () => {
+    const finishWorkout = useCallback(() => {
         setIsActive(false);
         setExercises([]);
         setSecondsElapsed(0);
         setGlobalNotes('');
-    };
+    }, []);
 
-    const updateExercises = (newExercises) => {
+    const updateExercises = useCallback((newExercises) => {
         setExercises(newExercises);
-    };
+    }, []);
 
-    const addExercise = (exerciseName) => {
+    const addExercise = useCallback((exerciseName) => {
         setExercises(prev => [...prev, { name: exerciseName, sets: [{ kg: '', reps: '', rpe: 8, completed: false }] }]);
-    };
+    }, []);
+
+    const value = useMemo(() => ({
+        isActive,
+        setIsActive,
+        date,
+        setDate,
+        sessionType,
+        setSessionType,
+        exercises,
+        setExercises: updateExercises,
+        addExercise,
+        globalNotes,
+        setGlobalNotes,
+        secondsElapsed,
+        setSecondsElapsed,
+        restTimer,
+        startRestTimer,
+        stopRestTimer,
+        addRestTime,
+        isRestTimerExpanded,
+        setIsRestTimerExpanded,
+        startWorkout,
+        cancelWorkout,
+        finishWorkout
+    }), [
+        isActive, date, sessionType, exercises, globalNotes, 
+        secondsElapsed, restTimer, isRestTimerExpanded,
+        updateExercises, addExercise, startRestTimer, 
+        stopRestTimer, addRestTime, startWorkout, 
+        cancelWorkout, finishWorkout
+    ]);
 
     return (
-        <WorkoutContext.Provider value={{
-            isActive,
-            setIsActive,
-            date,
-            setDate,
-            sessionType,
-            setSessionType,
-            exercises,
-            setExercises: updateExercises,
-            addExercise,
-            globalNotes,
-            setGlobalNotes,
-            secondsElapsed,
-            setSecondsElapsed,
-            restTimer,
-            startRestTimer,
-            stopRestTimer,
-            addRestTime,
-            isRestTimerExpanded,
-            setIsRestTimerExpanded,
-            startWorkout,
-            cancelWorkout,
-            finishWorkout
-        }}>
+        <WorkoutContext.Provider value={value}>
             {children}
         </WorkoutContext.Provider>
     );
