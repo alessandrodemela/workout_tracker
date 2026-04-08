@@ -99,9 +99,15 @@ export default function ConditioningTimer({ onClose }) {
         if (activeTimerMode === 'circuit') notesText = `Circuit: ${config.cycles} Cycles × ${config.rounds} Rds (${config.workTime}s work / ${config.restTime}s rest)`;
 
         let theoreticalDuration = 0;
-        if (activeTimerMode === 'emom') theoreticalDuration = config.rounds * config.workTime;
-        if (activeTimerMode === 'amrap') theoreticalDuration = config.workTime;
-        if (activeTimerMode === 'circuit') theoreticalDuration = config.cycles * (config.rounds * (config.workTime + config.restTime) + config.cycleRestTime);
+        const rounds = parseInt(config.rounds) || 0;
+        const workTime = parseInt(config.workTime) || 0;
+        const restTime = parseInt(config.restTime) || 0;
+        const cycles = parseInt(config.cycles) || 0;
+        const cycleRestTime = parseInt(config.cycleRestTime) || 0;
+
+        if (activeTimerMode === 'emom') theoreticalDuration = rounds * workTime;
+        if (activeTimerMode === 'amrap') theoreticalDuration = workTime;
+        if (activeTimerMode === 'circuit') theoreticalDuration = cycles * (rounds * (workTime + restTime) + cycleRestTime);
 
         // Hand off: build exercise list for ActiveWorkout
         const exercisesForLog = timerExercises.map(name => ({
@@ -111,14 +117,15 @@ export default function ConditioningTimer({ onClose }) {
 
         stopTimer();
 
-        startWorkout({
-            sessionType: modeName,
-            globalNotes: notesText,
-            secondsElapsed: theoreticalDuration,
-            exercises: exercisesForLog
+        navigate('/workout', {
+            state: {
+                isLog: true,
+                sessionType: modeName,
+                prefillNotes: notesText,
+                prefillDuration: theoreticalDuration,
+                prefillExercises: exercisesForLog
+            }
         });
-
-        navigate('/active-workout');
     };
 
     // ─── Config View ───────────────────────────────────────────────────────────
@@ -154,7 +161,7 @@ export default function ConditioningTimer({ onClose }) {
                         <ConfigRow
                             icon={<Zap className="w-5 h-5" />} iconBg="bg-red-500/10 text-red-500"
                             title="Time" subtitle="Total duration" borderHover="hover:border-red-500/30"
-                            value={config.workTime / 60} unit="min"
+                            value={Math.floor(config.workTime / 60)} unit="min"
                             onDecrement={() => updateConfig('workTime', config.workTime - 60)}
                             onIncrement={() => updateConfig('workTime', config.workTime + 60)}
                             onChange={(e) => {
@@ -361,7 +368,7 @@ export default function ConditioningTimer({ onClose }) {
                 )}
 
                 <span className={`text-2xl font-black uppercase tracking-widest ${phaseColors[phase]}`}>
-                    {phase}
+                    {phase === 'CycleRest' ? 'Cycle Rest' : phase}
                 </span>
                 <span className={`text-[110px] leading-none font-black tabular-nums tracking-tighter ${timeLeft <= 5 && phase === 'Work' ? 'text-brand-500 animate-pulse' : 'text-white'}`}>
                     {formatTime(timeLeft)}

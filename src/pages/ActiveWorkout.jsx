@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import useSWR, { mutate } from 'swr';
-import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save } from 'lucide-react';
+import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save, ChevronRight } from 'lucide-react';
 import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
@@ -12,13 +12,16 @@ import { useAuth } from '../context/AuthContext';
 
 export default function ActiveWorkout() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { data: exercisesData, mutate: mutateExercises } = useSWR(`${API_URL}/exercises`, fetcher);
     const masterExercises = exercisesData?.exercises || [];
 
     const { 
-        isActive, isContextReady, date, setDate, sessionType, setSessionType, 
+        isActive, isContextReady, isLogMode, isDurationLocked,
+        date, setDate, sessionType, setSessionType, 
         exercises, setExercises, globalNotes, setGlobalNotes, 
-        secondsElapsed, startWorkout, cancelWorkout, finishWorkout 
+        secondsElapsed, manualDuration, setManualDuration,
+        startWorkout, cancelWorkout, finishWorkout 
     } = useWorkout();
     const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
@@ -28,6 +31,8 @@ export default function ActiveWorkout() {
     const [hasInitialized, setHasInitialized] = useState(false);
 
     const formatDuration = (sec) => {
+        if (!sec && sec !== 0) return "00:00";
+        if (isNaN(sec)) return "00:00";
         const h = Math.floor(sec / 3600);
         const m = Math.floor((sec % 3600) / 60);
         const s = sec % 60;
@@ -44,14 +49,34 @@ export default function ActiveWorkout() {
 
     // Add exercise dropdown state
     const [isAddingExercise, setIsAddingExercise] = useState(false);
-    const [selectedExercise, setSelectedExercise] = useState('');
+    const [exerciseSearch, setExerciseSearch] = useState('');
+
+    const filteredMaster = useMemo(() => {
+        if (!masterExercises) return [];
+        return masterExercises
+            .filter(e => e.toLowerCase().includes(exerciseSearch.toLowerCase()))
+            .slice(0, 50);
+    }, [masterExercises, exerciseSearch]);
+
+    const addExerciseToLog = (name, isFunctional) => {
+        if (isFunctional) {
+            setExercises([...exercises, { name, sets: [] }]);
+        } else {
+            setExercises([...exercises, { name, sets: [{ kg: '', reps: '', rpe: 8, completed: false }] }]);
+        }
+        setIsAddingExercise(false);
+        setExerciseSearch('');
+    };
 
     useEffect(() => {
-        // 1. Critical: Wait for context to be ready (set synchronously via useLayoutEffect in provider)
+        // 1. Critical: Wait for context to be ready
         if (!isContextReady) return;
 
-        // 2. Critical: If already active, don't re-initialize
-        if (isActive) return;
+        // 2. Critical: If already active OR has data (e.g. from timer hand-off), don't re-initialize
+        if (isActive || (exercises && exercises.length > 0)) {
+            if (!hasInitialized) setHasInitialized(true);
+            return;
+        }
 
         // 3. Prevent double-initialization (StrictMode / remounts)
         if (hasInitialized) return;
@@ -65,14 +90,15 @@ export default function ActiveWorkout() {
         }
 
         const isTemplateFlow = stored && stored !== 'undefined' && stored !== 'null';
+        const stateSessionType = location.state?.sessionType;
 
-        // 5. Template path: wait until masterExercises are loaded before proceeding
+        // 5. Template flow path
         if (isTemplateFlow) {
             if (!exercisesData || masterExercises.length === 0) return; // Wait for SWR
 
             try {
                 const parsed = JSON.parse(stored);
-                setRawTemplate(parsed);
+                setHasInitialized(true);
                 const splitName = parsed[0]?.Split || 'Template';
 
                 const missing = parsed
@@ -80,8 +106,6 @@ export default function ActiveWorkout() {
                     .filter(name => name && !masterExercises.includes(name));
 
                 const uniqueMissing = [...new Set(missing)];
-
-                setHasInitialized(true);
 
                 if (uniqueMissing.length > 0) {
                     setSessionType(splitName);
@@ -97,14 +121,21 @@ export default function ActiveWorkout() {
             } catch (e) {
                 console.error('Failed to parse template exercises:', e);
                 setHasInitialized(true);
-                startWorkout({ sessionType: 'Standard' });
+                startWorkout({ sessionType: stateSessionType || 'Standard' });
             }
         } else {
-            // 6. Plain custom workout — no master exercises needed
+            // 6. Plain custom workout path
             setHasInitialized(true);
-            startWorkout({ sessionType: 'Standard' });
+            const isLogState = location.state?.isLog ?? false;
+            startWorkout({ 
+                sessionType: stateSessionType || 'Standard', 
+                isLog: isLogState,
+                globalNotes: location.state?.prefillNotes || '',
+                exercises: location.state?.prefillExercises || [],
+                prefillDuration: location.state?.prefillDuration
+            });
         }
-    }, [isContextReady, masterExercises, isActive, exercisesData, startWorkout, setSessionType, hasInitialized]);
+    }, [isContextReady, masterExercises, isActive, exercises, exercisesData, startWorkout, setSessionType, hasInitialized, location.state]);
 
     const initializeWorkout = (templateData, resMap = {}, splitName = null) => {
         const initialExercises = templateData
@@ -125,7 +156,8 @@ export default function ActiveWorkout() {
         
         startWorkout({ 
             sessionType: splitName || sessionType, 
-            exercises: initialExercises 
+            exercises: initialExercises,
+            isLog: location.state?.isLog ?? false
         });
         setUnresolvedItems([]);
     };
@@ -194,6 +226,20 @@ export default function ActiveWorkout() {
             });
         }
 
+        // Determine effective duration
+        // In log mode: manualDuration holds the value (locked or editable), expressed in minutes
+        const durationSeconds = isLogMode
+            ? (parseInt(manualDuration) || 0) * 60
+            : secondsElapsed;
+
+        if (isLogMode && durationSeconds <= 0) {
+            return setAlertConfig({ 
+                isOpen: true, 
+                title: 'Invalid Duration', 
+                message: 'Please provide a valid session duration greater than 0.' 
+            });
+        }
+
         setIsSaving(true);
         const validRows = [];
         exercises.forEach(ex => {
@@ -233,12 +279,12 @@ export default function ActiveWorkout() {
                     Session_Type: sessionType,
                     Exercise: 'Conditioning Circuit',
                     Notes: globalNotes,
-                    Duration_Seconds: secondsElapsed || null,
+                    Duration_Seconds: durationSeconds || null,
                     Splits: splits.length > 0 ? splits : null
                 }, user.id);
             } else {
                 // Add duration to global notes to be parsed by History
-                const durationNote = `[[D:${secondsElapsed}]]`;
+                const durationNote = `[[D:${durationSeconds}]]`;
                 const finalNotes = globalNotes ? `${globalNotes}\n${durationNote}` : durationNote;
                 await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows }, user.id);
             }
@@ -386,24 +432,55 @@ export default function ActiveWorkout() {
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <div className="flex flex-col">
-                        <h1 className="text-3xl font-black tracking-tight text-white">{isFunctionalSession ? 'Conditioning' : 'Workout'}</h1>
-                        <p className="text-[#A3A3A3] text-sm">Log your session details</p>
+                        <h1 className="text-3xl font-black tracking-tight text-white">
+                            {isLogMode ? 'Log Session' : (isFunctionalSession ? 'Conditioning' : 'Workout')}
+                        </h1>
+                        <p className="text-[#A3A3A3] text-sm">
+                            {isLogMode ? 'Recording a past session' : 'Log your session details'}
+                        </p>
                     </div>
                 </div>
-                <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-brand-500">Duration</span>
-                    <span className="text-xl font-black text-white tabular-nums">{formatDuration(secondsElapsed)}</span>
-                </div>
+                {/* Duration: live timer when active, manual input when logging (locked if prefilled from a timer) */}
+                {isLogMode ? (
+                    <div className="flex flex-col items-end gap-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">
+                            {isDurationLocked ? 'Total Duration' : 'Duration (min)'}
+                        </span>
+                        {isDurationLocked ? (
+                            <span className="text-xl font-black text-white tabular-nums">
+                                {manualDuration ? `${manualDuration}m` : '—'}
+                            </span>
+                        ) : (
+                            <input
+                                type="number"
+                                min="0"
+                                placeholder="0"
+                                value={manualDuration}
+                                onChange={e => setManualDuration(e.target.value)}
+                                className="w-20 bg-[#171717] border border-[#262626] rounded-xl text-right text-xl font-black text-white px-3 py-1 tabular-nums focus:border-brand-500 focus:outline-none"
+                            />
+                        )}
+                    </div>
+                ) : (
+                    <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-brand-500">Duration</span>
+                        <span className="text-xl font-black text-white tabular-nums">{formatDuration(secondsElapsed)}</span>
+                    </div>
+                )}
             </div>
 
             <div className="flex gap-3">
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} className="input-field py-3 text-sm flex-1" />
                 <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="input-field py-3 text-sm flex-1 appearance-none">
                     <option value="Standard">Standard</option>
-                    <option value="Functional">Functional</option>
-                    <option value="EMOM">EMOM</option>
-                    <option value="AMRAP">AMRAP</option>
-                    <option value="Circuit">Circuit</option>
+                    {(isLogMode || ['Functional', 'EMOM', 'AMRAP', 'Circuit'].includes(sessionType)) && (
+                        <>
+                            <option value="Functional">Functional</option>
+                            <option value="EMOM">EMOM</option>
+                            <option value="AMRAP">AMRAP</option>
+                            <option value="Circuit">Circuit</option>
+                        </>
+                    )}
                     {!['Standard','Functional','EMOM','AMRAP','Circuit'].includes(sessionType) && (
                         <option value={sessionType}>{sessionType.length > 1 ? sessionType : `Split ${sessionType}`}</option>
                     )}
@@ -436,18 +513,31 @@ export default function ActiveWorkout() {
                         <div className="card-glass flex flex-col gap-4 animate-slide-up">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-sm font-bold">Add Movement</h3>
-                                <button onClick={() => setIsAddingExercise(false)} className="text-[#A3A3A3] text-xs">Cancel</button>
+                                <button onClick={() => { setIsAddingExercise(false); setExerciseSearch(''); }} className="text-[#A3A3A3] text-xs">Cancel</button>
                             </div>
-                            <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="input-field appearance-none">
-                                <option value="">Select exercise...</option>
-                                {masterExercises.map((ex, i) => <option key={i} value={ex}>{ex}</option>)}
-                            </select>
-                            <PrimaryButton onClick={() => {
-                                if (!selectedExercise) return;
-                                setExercises([...exercises, { name: selectedExercise, sets: [] }]);
-                                setIsAddingExercise(false);
-                                setSelectedExercise('');
-                            }} disabled={!selectedExercise}>Add</PrimaryButton>
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search movements..."
+                                value={exerciseSearch}
+                                onChange={e => setExerciseSearch(e.target.value)}
+                                className="w-full bg-[#0A0A0A] border border-[#404040] rounded-2xl px-4 py-3 text-white text-sm placeholder-[#A3A3A3] focus:outline-none focus:border-brand-500"
+                            />
+                            <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                                {filteredMaster.map((ex, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => addExerciseToLog(ex, true)}
+                                        className="text-left px-4 py-3 text-sm font-bold text-white bg-[#0A0A0A] border border-[#262626] rounded-xl hover:border-brand-500 hover:text-brand-500 transition-all flex items-center justify-between flex-shrink-0"
+                                    >
+                                        {ex}
+                                        <ChevronRight className="w-4 h-4 opacity-40" />
+                                    </button>
+                                ))}
+                                {filteredMaster.length === 0 && (
+                                    <p className="text-xs text-[#A3A3A3] text-center py-2">No movements found</p>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <button onClick={() => setIsAddingExercise(true)} className="w-full py-4 rounded-[2rem] border-2 border-dashed border-[#262626] text-[#A3A3A3] font-bold hover:border-brand-500 hover:text-brand-500 transition-all flex items-center justify-center gap-2">
@@ -471,18 +561,31 @@ export default function ActiveWorkout() {
                         <div className="card-glass flex flex-col gap-4 animate-slide-up">
                             <div className="flex justify-between items-center">
                                 <h3 className="text-sm font-bold">Add Movement</h3>
-                                <button onClick={() => setIsAddingExercise(false)} className="text-[#A3A3A3] text-xs">Cancel</button>
+                                <button onClick={() => { setIsAddingExercise(false); setExerciseSearch(''); }} className="text-[#A3A3A3] text-xs">Cancel</button>
                             </div>
-                            <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="input-field appearance-none">
-                                <option value="">Select exercise...</option>
-                                {masterExercises.map((ex, i) => <option key={i} value={ex}>{ex}</option>)}
-                            </select>
-                            <PrimaryButton onClick={() => {
-                                if (!selectedExercise) return;
-                                setExercises([...exercises, { name: selectedExercise, sets: [{ kg: '', reps: '', rpe: 8, completed: false }] }]);
-                                setIsAddingExercise(false);
-                                setSelectedExercise('');
-                            }} disabled={!selectedExercise}>Confirm</PrimaryButton>
+                            <input
+                                autoFocus
+                                type="text"
+                                placeholder="Search exercises..."
+                                value={exerciseSearch}
+                                onChange={e => setExerciseSearch(e.target.value)}
+                                className="w-full bg-[#0A0A0A] border border-[#404040] rounded-2xl px-4 py-3 text-white text-sm placeholder-[#A3A3A3] focus:outline-none focus:border-brand-500"
+                            />
+                            <div className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+                                {filteredMaster.map((ex, i) => (
+                                    <button
+                                        key={i}
+                                        onClick={() => addExerciseToLog(ex, false)}
+                                        className="text-left px-4 py-3 text-sm font-bold text-white bg-[#0A0A0A] border border-[#262626] rounded-xl hover:border-brand-500 hover:text-brand-500 transition-all flex items-center justify-between flex-shrink-0"
+                                    >
+                                        {ex}
+                                        <ChevronRight className="w-4 h-4 opacity-40" />
+                                    </button>
+                                ))}
+                                {filteredMaster.length === 0 && (
+                                    <p className="text-xs text-[#A3A3A3] text-center py-2">No exercises found</p>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <button onClick={() => setIsAddingExercise(true)} className="w-full py-5 rounded-[2rem] border-2 border-dashed border-[#262626] text-[#A3A3A3] font-bold hover:border-[#A3A3A3] transition-all flex items-center justify-center gap-2">
@@ -503,13 +606,16 @@ export default function ActiveWorkout() {
                 >
                     {isSaved ? (
                         <><Check className="w-5 h-5 mr-1" /> Session Saved!</>
+                    ) : isLogMode ? (
+                        <><Save className="w-5 h-5 mr-1" /> Save Session</>
                     ) : (
                         <><Check className="w-5 h-5 mr-1" /> Complete Session</>
                     )}
                 </PrimaryButton>
                 <button 
                     onClick={handleCancelWorkout}
-                    className="w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest hover:border-red-500/50 hover:text-red-500 transition-all flex items-center justify-center gap-2"
+                    disabled={isSaved || isSaving}
+                    className={`w-full py-4 rounded-2xl border border-[#262626] text-[#A3A3A3] text-xs font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 ${isSaved || isSaving ? 'opacity-50 cursor-not-allowed' : 'hover:border-red-500/50 hover:text-red-500'}`}
                 >
                     Discard Session
                 </button>

@@ -297,9 +297,10 @@ export default function History({ isEmbedded = false }) {
                                             <div className="flex flex-col gap-2">
                                                 <h4 className="text-xs font-black uppercase tracking-widest text-[#A3A3A3] mb-2">Splits</h4>
                                                 {session.splits.map((split, sIdx) => {
-                                                    const m = Math.floor(split.duration / 60);
-                                                    const s = split.duration % 60;
-                                                    const timeStr = `${m}:${s < 10 ? '0'+s : s}`;
+                                                    const hasDuration = typeof split.duration === 'number' && !isNaN(split.duration);
+                                                    const m = hasDuration ? Math.floor(split.duration / 60) : 0;
+                                                    const s = hasDuration ? split.duration % 60 : 0;
+                                                    const timeStr = hasDuration ? `${m}:${s < 10 ? '0' + s : s}` : null;
                                                     return (
                                                         <div key={sIdx} className="bg-[#171717]/50 border border-[#262626] p-3 rounded-xl flex justify-between items-center group hover:border-[#404040] transition-colors">
                                                             <div className="flex items-center gap-3">
@@ -308,14 +309,16 @@ export default function History({ isEmbedded = false }) {
                                                                 </div>
                                                                 <div className="flex flex-col">
                                                                     <span className="text-xs font-bold text-white">{split.title}</span>
-                                                                    <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">{split.distance}</span>
+                                                                    {split.distance && <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">{split.distance}</span>}
                                                                 </div>
                                                             </div>
-                                                            <span className="text-sm font-black text-brand-500 tabular-nums">
-                                                                {timeStr}
-                                                            </span>
+                                                            {timeStr && (
+                                                                <span className="text-sm font-black text-brand-500 tabular-nums">
+                                                                    {timeStr}
+                                                                </span>
+                                                            )}
                                                         </div>
-                                                    )
+                                                    );
                                                 })}
                                             </div>
                                         )}

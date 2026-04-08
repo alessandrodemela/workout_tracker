@@ -20,16 +20,23 @@ export const TimerProvider = ({ children }) => {
     const [currentCycle, setCurrentCycle] = useState(1);
     const [isActive, setIsActive] = useState(false);
     const [timerExercises, setTimerExercises] = useState([]); // Pre-selected exercises for guidance
+    const [totalElapsedSeconds, setTotalElapsedSeconds] = useState(0); // Total time the timer has been running
 
     const activeConfig = activeTimerMode ? config[activeTimerMode] : config.circuit;
 
     const updateConfig = (key, value) => {
         if (!activeTimerMode) return;
+        
+        let minValue = 0;
+        if (key === 'workTime') minValue = 5; // at least 5s of work
+        if (key === 'rounds') minValue = 1; // at least 1 round
+        if (key === 'cycles') minValue = 1; // at least 1 cycle
+        
         setConfig(prev => ({
             ...prev,
             [activeTimerMode]: {
                 ...prev[activeTimerMode],
-                [key]: Math.max(0, value)
+                [key]: Math.max(minValue, value)
             }
         }));
     };
@@ -43,11 +50,6 @@ export const TimerProvider = ({ children }) => {
             }
             const context = audioContextRef.current;
             
-            // Optimization: Always try to resume context (user gesture might have just happened)
-            if (context.state === 'suspended') {
-                context.resume();
-            }
-
             const oscillator = context.createOscillator();
             const gain = context.createGain();
             oscillator.connect(gain);
@@ -56,9 +58,20 @@ export const TimerProvider = ({ children }) => {
             oscillator.frequency.value = freq;
             gain.gain.setValueAtTime(0.1, context.currentTime);
             gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
-            oscillator.start(context.currentTime);
-            oscillator.stop(context.currentTime + duration);
-        } catch (err) { }
+
+            // Resuming happens asynchronously, but we can start the oscillator anyway
+            if (context.state === 'suspended') {
+                context.resume().then(() => {
+                    oscillator.start(context.currentTime);
+                    oscillator.stop(context.currentTime + duration);
+                });
+            } else {
+                oscillator.start(context.currentTime);
+                oscillator.stop(context.currentTime + duration);
+            }
+        } catch (err) {
+            console.warn('Audio playback failed', err);
+        }
     };
 
     const handleNextPhase = () => {
@@ -137,6 +150,7 @@ export const TimerProvider = ({ children }) => {
         setIsActive(false);
         setPhase('Idle');
         setIsConfiguring(true);
+        setTotalElapsedSeconds(0);
     };
 
     useEffect(() => {
@@ -150,6 +164,7 @@ export const TimerProvider = ({ children }) => {
                     }
                     return next;
                 });
+                setTotalElapsedSeconds(prev => prev + 1);
             }, 1000);
         } else if (isActive && timeLeft === 0) {
             handleNextPhase();
@@ -163,7 +178,8 @@ export const TimerProvider = ({ children }) => {
         phase, setPhase, timeLeft, setTimeLeft, currentRound, setCurrentRound,
         currentCycle, setCurrentCycle, isActive, setIsActive,
         startTimer, pauseTimer, resumeTimer, stopTimer, skipPhase,
-        timerExercises, setTimerExercises, currentExercise, nextExercise
+        timerExercises, setTimerExercises, currentExercise, nextExercise,
+        totalElapsedSeconds
     };
 
     return <TimerContext.Provider value={value}>{children}</TimerContext.Provider>;

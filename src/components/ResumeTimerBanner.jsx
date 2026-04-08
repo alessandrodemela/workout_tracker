@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Timer, Play, Pause, SkipForward, Square } from 'lucide-react';
+import { Timer, Play, Pause, SkipForward, Square, Check, Plus } from 'lucide-react';
 import { useTimer } from '../context/TimerContext';
 import ConfirmModal from './ConfirmModal';
 
@@ -8,14 +8,15 @@ export default function ResumeTimerBanner() {
     const navigate = useNavigate();
     const { 
         phase, timeLeft, setActiveTimerMode, activeTimerMode,
-        isActive, pauseTimer, resumeTimer, stopTimer, skipPhase 
+        isActive, pauseTimer, resumeTimer, stopTimer, skipPhase,
+        totalElapsedSeconds
     } = useTimer();
 
     const modeName = activeTimerMode === 'emom' ? 'EMOM' : activeTimerMode === 'amrap' ? 'AMRAP' : 'Circuit';
 
     const [showStopModal, setShowStopModal] = useState(false);
 
-    if (phase === 'Idle' || phase === 'Done') return null;
+    if (phase === 'Idle') return null;
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
@@ -33,9 +34,55 @@ export default function ResumeTimerBanner() {
     const currentStyle = phaseColors[phase] || 'text-brand-500 border-brand-500/30 shadow-brand-500/10';
 
     const handleBannerClick = () => {
-        // Navigate to the correct timer based on active mode
+        // Ensure the mode is set if we're resuming
+        if (!activeTimerMode) {
+            // Fallback to circuit if lost
+            setActiveTimerMode('circuit');
+        }
         navigate('/conditioning');
     };
+
+    // Done state — show log prompt
+    if (phase === 'Done') {
+        return (
+            <div className="w-full max-w-lg mx-auto bg-[#171717]/90 backdrop-blur-md border border-brand-500/30 shadow-lg shadow-brand-500/10 rounded-2xl p-4 flex items-center justify-between animate-slide-up pointer-events-auto">
+                <div className="flex items-center gap-3 flex-1">
+                    <div className="w-9 h-9 rounded-full bg-brand-500/10 flex-shrink-0 flex items-center justify-center text-brand-500">
+                        <Check className="w-5 h-5" />
+                    </div>
+                    <div className="flex flex-col text-left">
+                        <span className="text-xs font-black text-white">{modeName} Complete</span>
+                        <span className="text-[11px] text-[#A3A3A3] font-bold">
+                            {Math.floor(totalElapsedSeconds / 60)}m {totalElapsedSeconds % 60}s total
+                        </span>
+                    </div>
+                </div>
+                <div className="flex items-center gap-2 pl-3 border-l border-white/5">
+                    <button
+                        onClick={() => {
+                            stopTimer();
+                            navigate('/workout', {
+                                state: {
+                                    isLog: true,
+                                    sessionType: 'Functional',
+                                    prefillDuration: totalElapsedSeconds
+                                }
+                            });
+                        }}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-brand-500 text-black text-xs font-black hover:bg-brand-400 active:scale-95 transition-all"
+                    >
+                        <Plus className="w-3.5 h-3.5" strokeWidth={3} /> Log Workout
+                    </button>
+                    <button
+                        onClick={() => stopTimer()}
+                        className="w-9 h-9 rounded-full bg-[#262626] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-all active:scale-95"
+                    >
+                        <Square className="w-3.5 h-3.5 fill-current" />
+                    </button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <>
@@ -47,7 +94,7 @@ export default function ResumeTimerBanner() {
                         <Timer className="w-5 h-5" />
                     </div>
                     <div className="flex flex-col text-left truncate">
-                        <span className="text-xs font-black text-white truncate">{phase} Phase</span>
+                        <span className="text-xs font-black text-white truncate">{phase === 'CycleRest' ? 'Cycle Rest' : phase} Phase</span>
                         <span className="text-[14px] font-black tabular-nums transition-colors opacity-90">
                             {formatTime(timeLeft)}
                         </span>
