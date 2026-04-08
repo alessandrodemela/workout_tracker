@@ -13,6 +13,7 @@
     "formik": "^2.4.9",
     "framer-motion": "^12.35.2",
     "lucide-react": "^0.577.0",
+    "papaparse": "^5.5.3",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.16.0",

@@ -1,21 +1,24 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import useSWR from 'swr';
-import { Dumbbell, Plus, LogOut, Play, ClipboardList } from 'lucide-react';
+import useSWR, { useSWRConfig } from 'swr';
+import { Dumbbell, Plus, LogOut, Play, ClipboardList, Upload } from 'lucide-react';
 import { API_URL, fetcher } from '../api';
 import { useAuth } from '../context/AuthContext';
 import CalendarWidget from '../components/CalendarWidget';
 import { useTimer } from '../context/TimerContext';
 import { useWorkout } from '../context/WorkoutContext';
 import ConfirmModal from '../components/ConfirmModal';
+import RoutineImportModal from '../components/RoutineImportModal';
 
 export default function HomeDashboard() {
     const navigate = useNavigate();
     const { phase, stopTimer, activeTimerMode } = useTimer();
     const { isActive: isWorkoutActive } = useWorkout();
     const { user, signOut } = useAuth();
+    const { mutate } = useSWRConfig();
 
     const [showSessionPicker, setShowSessionPicker] = useState(false);
+    const [showImport, setShowImport] = useState(false);
 
     const logOptions = [
         { id: 'Standard', label: 'Standard', desc: 'Weightlifting & Strength' },
@@ -166,8 +169,15 @@ export default function HomeDashboard() {
             )}
 
             <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-end mb-2">
+                <div className="flex justify-between items-center mb-2">
                     <h2 className="text-lg font-bold">Routines</h2>
+                    <button
+                        onClick={() => setShowImport(true)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#171717] border border-[#262626] text-[#A3A3A3] hover:text-white hover:border-white/20 transition-all text-xs font-black uppercase tracking-widest active:scale-95"
+                    >
+                        <Upload className="w-3.5 h-3.5" />
+                        Import
+                    </button>
                 </div>
 
                 <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
@@ -208,6 +218,15 @@ export default function HomeDashboard() {
                 confirmText={`Stop & Start Workout`}
                 cancelText="Back to Timer"
                 type="danger"
+            />
+
+            <RoutineImportModal
+                isOpen={showImport}
+                onClose={() => setShowImport(false)}
+                onSuccess={() => {
+                    mutate(`${API_URL}/templates`);
+                    setShowImport(false);
+                }}
             />
         </div>
     );
