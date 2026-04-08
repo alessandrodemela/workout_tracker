@@ -53,7 +53,7 @@ function AppContent() {
             )}
 
             {/* Scrollable page content — sits above the fixed nav */}
-            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col ${showNav ? 'pb-[calc(env(safe-area-inset-bottom,20px)+96px)]' : 'pb-0'}`}>
+            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-20 ${showNav ? 'pb-[calc(env(safe-area-inset-bottom,20px)+96px)]' : 'pb-0'}`}>
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />

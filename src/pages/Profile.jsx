@@ -100,7 +100,7 @@ export default function Profile() {
     };
 
     return (
-        <div className="flex flex-col gap-8 pb-32 pt-12 animate-fade-in w-full">
+        <div className="flex flex-col gap-8 pb-32 pt-4 animate-fade-in w-full">
             {/* Profile Header Card */}
             <div className="relative overflow-hidden card-glass p-6 md:p-8 rounded-[3rem] border-[#171717]">
                 <div className="absolute top-0 right-0 p-4 md:p-6 flex flex-col gap-2 scale-90 origin-top-right">

@@ -114,14 +114,9 @@ export default function ExerciseDatabase() {
     };
 
     return (
-        <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6 relative">
+        <div className="flex flex-col gap-6 pb-32 animate-fade-in relative">
             <div className="flex justify-between items-center mb-2">
-                <h1 className="text-3xl font-black tracking-tight text-white">Exercises</h1>
-                {!isAdding && (
-                    <button onClick={() => setIsAdding(true)} className="p-2 bg-[#171717] rounded-full text-white hover:bg-[#262626] transition-colors">
-                        <Plus className="w-5 h-5" />
-                    </button>
-                )}
+                <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">Exercises</h1>
             </div>
 
             {isAdding && (
@@ -386,6 +381,16 @@ export default function ExerciseDatabase() {
                 cancelText={null}
                 type={alertConfig.title === 'Error' ? 'danger' : 'brand'}
             />
+
+            {/* Floating Action Button for Adding Exercise */}
+            {!isAdding && (
+                <button
+                    onClick={() => setIsAdding(true)}
+                    className="fixed bottom-[calc(env(safe-area-inset-bottom,20px)+100px)] right-6 w-16 h-16 bg-brand-500 rounded-2xl text-black flex items-center justify-center shadow-[0_12px_40px_rgba(212,255,0,0.3)] z-40 hover:scale-110 active:scale-95 transition-all group border-b-4 border-black/20"
+                >
+                    <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" strokeWidth={3} />
+                </button>
+            )}
         </div>
     );
 }

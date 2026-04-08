@@ -60,7 +60,7 @@ export default function Settings() {
     };
 
     return (
-        <div className="flex flex-col gap-8 pb-32 pt-6 animate-fade-in w-full">
+        <div className="flex flex-col gap-8 pb-32 animate-fade-in w-full">
             <div className="flex items-center gap-4">
                 <button onClick={() => navigate('/home')} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
                     <ChevronLeft className="w-6 h-6" />

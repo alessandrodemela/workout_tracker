@@ -73,7 +73,7 @@ export default function HomeDashboard() {
     };
 
     return (
-        <div className="flex flex-col gap-8 pb-4 animate-fade-in pt-6">
+        <div className="flex flex-col gap-8 pb-4 animate-fade-in">
             <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                     <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-[0.2em] mb-1">Strive</span>
