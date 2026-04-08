@@ -29,9 +29,10 @@ const EquipmentIcon = ({ equipment, className = "w-6 h-6", strokeWidth = 2 }) =>
 
 const MUSCLE_TO_AREA_MAP = {
     'Chest': 'Upper Body', 'Back': 'Upper Body', 'Shoulders': 'Upper Body',
-    'Biceps': 'Upper Body', 'Triceps': 'Upper Body', 'Quadriceps': 'Lower Body',
-    'Hamstrings': 'Lower Body', 'Calves': 'Lower Body', 'Glutes': 'Lower Body',
-    'Core': 'Core', 'Full Body': 'Full Body', 'Other': 'Other'
+    'Biceps': 'Upper Body', 'Triceps': 'Upper Body', 'Forearms': 'Upper Body',
+    'Abs': 'Upper Body',
+    'Quadriceps': 'Lower Body', 'Hamstrings': 'Lower Body', 'Calves': 'Lower Body', 'Glutes': 'Lower Body',
+    'Core': 'Core', 'Cardio': 'Full Body', 'Full Body': 'Full Body', 'Other': 'Other'
 };
 
 export default function ExerciseDatabase() {

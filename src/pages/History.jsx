@@ -14,7 +14,17 @@ export default function History({ isEmbedded = false }) {
         'Legs': '#FFE66D',
         'Shoulders': '#A8E6CF',
         'Arms': '#FF8B94',
+        'Biceps': '#FF8B94',
+        'Triceps': '#FF8B94',
         'Core': '#B8B8FF',
+        'Forearms': '#FFB347',
+        'Calves': '#FFD1DC',
+        'Glutes': '#CBAACB',
+        'Quadriceps': '#FDFD96',
+        'Quads': '#FDFD96',
+        'Hamstrings': '#FFDAC1',
+        'Abs': '#AEC6CF',
+        'Cardio': '#FFB7B2',
     };
 
     const groupedSessions = useMemo(() => {
