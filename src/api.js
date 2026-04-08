@@ -1,5 +1,12 @@
 import { supabase } from './supabaseClient';
 
+export const toTitleCase = (str) => {
+    if (!str) return '';
+    return str.split(' ')
+        .map(word => (word.length > 1 && word === word.toUpperCase()) ? word : word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+};
+
 // Compatibility Layer (optional, but good for SWR keys)
 export const API_URL = 'supabase';
 
@@ -30,10 +37,10 @@ export const getExercises = async () => {
         exercises: data.map(ex => ex.name),
         full_list: data.map(ex => ({
             ID_Exercise: ex.id,
-            Exercise_Name: ex.name,
-            Target_Muscle: ex.target_muscle,
-            Target_Area: ex.target_area,
-            Equipment: ex.equipment,
+            Exercise_Name: toTitleCase(ex.name),
+            Target_Muscle: toTitleCase(ex.target_muscle),
+            Target_Area: toTitleCase(ex.target_area),
+            Equipment: toTitleCase(ex.equipment),
             Notes: ex.notes
         }))
     };
@@ -43,7 +50,7 @@ export const getExerciseHistory = async (exerciseName) => {
     const { data, error } = await supabase
         .from('workout_logs')
         .select('*')
-        .eq('exercise', exerciseName)
+        .ilike('exercise', exerciseName)
         .order('date', { ascending: false });
     
     if (error) throw error;
@@ -62,7 +69,7 @@ export const getExerciseHistory = async (exerciseName) => {
     const formattedHistory = data.map(log => ({
         ...log,
         Date: log.date,
-        Exercise: log.exercise,
+        Exercise: toTitleCase(log.exercise),
         Kg: log.kg,
         Sets: log.sets,
         Reps: log.reps,
@@ -96,7 +103,7 @@ export const getTemplates = async () => {
         Mesocycle: t.mesocycle,
         Split: t.split,
         Exercise_Number: t.exercise_number,
-        Exercise_Name: t.exercise_name,
+        Exercise_Name: toTitleCase(t.exercise_name),
         Sets: t.sets,
         Reps: t.reps,
         RPE: t.rpe,
@@ -129,21 +136,20 @@ export const getWorkoutHistory = async () => {
 
     const enrichedWorkouts = (logs || []).map(log => ({
         ...log,
-        // Match keys expected by frontend components (Standardize case if needed)
         Date: log.date,
         Session_Type: log.session_type,
-        Exercise: log.exercise,
+        Exercise: toTitleCase(log.exercise),
         Kg: log.kg,
         Sets: log.sets,
         Reps: log.reps,
-        Target_Muscle: (log.exercise && muscleMap[log.exercise.toUpperCase()]) || null
+        Target_Muscle: toTitleCase((log.exercise && muscleMap[log.exercise.toUpperCase()]) || null)
     }));
 
     const enrichedFunctional = (functional || []).map(f => ({
         ...f,
         Date: f.date,
         Session_Type: f.session_type,
-        Exercise: f.exercise,
+        Exercise: toTitleCase(f.exercise),
         Duration_Seconds: f.duration_seconds,
         Splits: f.splits
     }));
@@ -166,7 +172,7 @@ export const saveWorkoutSession = async (session, userId) => {
         week: weekNum,
         session_type: Session_Type,
         mesocycle: Mesocycle,
-        exercise: ex.Exercise,
+        exercise: ex.Exercise.toLowerCase(),
         kg: ex.Kg,
         sets: ex.Sets,
         reps: ex.Reps,
@@ -194,7 +200,7 @@ export const saveFunctionalSession = async (session, userId) => {
             date: sessionDate,
             week: weekNum,
             session_type: Session_Type,
-            exercise: Exercise || 'Functional Circuit',
+            exercise: (Exercise || 'Functional Circuit').toLowerCase(),
             notes: Notes,
             user_id: userId,
             duration_seconds: Duration_Seconds || null,
@@ -211,8 +217,8 @@ export const mapTemplateExercises = async (mapping) => {
     for (const [oldName, newName] of Object.entries(mapping)) {
         const { error } = await supabase
             .from('workout_templates')
-            .update({ exercise_name: newName })
-            .eq('exercise_name', oldName);
+            .update({ exercise_name: newName.toLowerCase() })
+            .ilike('exercise_name', oldName);
         if (error) throw error;
     }
     return { status: 'success' };
@@ -222,10 +228,10 @@ export const addExercise = async (ex) => {
     const { error } = await supabase
         .from('exercises')
         .insert([{
-            name: ex.Exercise_Name,
-            target_muscle: ex.Target_Muscle,
-            target_area: ex.Target_Area,
-            equipment: ex.Equipment,
+            name: ex.Exercise_Name.toLowerCase(),
+            target_muscle: ex.Target_Muscle.toLowerCase(),
+            target_area: ex.Target_Area.toLowerCase(),
+            equipment: ex.Equipment.toLowerCase(),
             notes: ex.Notes || ''
         }]);
 
@@ -235,10 +241,10 @@ export const addExercise = async (ex) => {
 
 export const bulkAddExercises = async (exercises) => {
     const rows = exercises.map(ex => ({
-        name: ex.Exercise_Name,
-        target_muscle: ex.Target_Muscle,
-        target_area: ex.Target_Area,
-        equipment: ex.Equipment,
+        name: ex.Exercise_Name.toLowerCase(),
+        target_muscle: ex.Target_Muscle.toLowerCase(),
+        target_area: ex.Target_Area.toLowerCase(),
+        equipment: ex.Equipment.toLowerCase(),
         notes: ex.Notes || ''
     }));
 

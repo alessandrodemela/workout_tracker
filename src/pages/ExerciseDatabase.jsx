@@ -1,7 +1,7 @@
 // This file is fine, I will just add the plus button
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle } from 'lucide-react';
+import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle, Dumbbell, Weight, BicepsFlexed, Cable, Cog, Zap } from 'lucide-react';
 import { API_URL, fetcher, addExercise } from '../api';
 import PrimaryButton from '../components/PrimaryButton';
 import { useWorkout } from '../context/WorkoutContext';
@@ -14,6 +14,17 @@ const EQUIPMENT_COLORS = {
     'Cable': 'text-blue-500 bg-blue-500/10 border-blue-500/20',
     'Machine': 'text-purple-500 bg-purple-500/10 border-purple-500/20',
     'Other': 'text-[#A3A3A3] bg-[#171717] border-[#262626]'
+};
+
+const EquipmentIcon = ({ equipment, className = "w-6 h-6", strokeWidth = 2 }) => {
+    switch (equipment?.toLowerCase()) {
+        case 'barbell': return <Weight className={className} strokeWidth={strokeWidth} />;
+        case 'dumbbells': return <Dumbbell className={className} strokeWidth={strokeWidth} />;
+        case 'bodyweight': return <BicepsFlexed className={className} strokeWidth={strokeWidth} />;
+        case 'cable': return <Cable className={className} strokeWidth={strokeWidth} />;
+        case 'machine': return <Cog className={className} strokeWidth={strokeWidth} />;
+        default: return <Zap className={className} strokeWidth={strokeWidth} />;
+    }
 };
 
 const MUSCLE_TO_AREA_MAP = {
@@ -198,8 +209,8 @@ export default function ExerciseDatabase() {
                                         className="flex items-center justify-between p-4 bg-[#0A0A0A] border border-[#171717] rounded-3xl hover:border-[#262626] active:scale-95 transition-all w-full text-left group"
                                     >
                                         <div className="flex items-center gap-4">
-                                            <div className="w-12 h-12 rounded-2xl bg-[#171717] flex items-center justify-center text-xl">
-                                                {ex.Equipment === 'Barbell' ? '🏋️' : ex.Equipment === 'Bodyweight' ? '💪' : '⚡'}
+                                            <div className="w-12 h-12 rounded-2xl bg-[#171717] flex items-center justify-center text-[#A3A3A3] group-hover:text-brand-500 transition-colors">
+                                                <EquipmentIcon equipment={ex.Equipment} />
                                             </div>
                                             <div className="flex flex-col gap-1">
                                                 <h3 className="font-bold text-white group-hover:text-brand-500 transition-colors">{ex.Exercise_Name}</h3>
@@ -241,7 +252,10 @@ export default function ExerciseDatabase() {
                                         <span className="text-[10px] font-black uppercase tracking-widest text-[#FF6B6B]">{selectedExercise.Target_Muscle}</span>
                                     </div>
                                     <h2 className="text-4xl font-black text-white tracking-tight leading-none mt-1">{selectedExercise.Exercise_Name}</h2>
-                                    <span className="text-sm font-bold text-[#A3A3A3] opacity-60 ml-0.5">{selectedExercise.Equipment || 'Barbell'}</span>
+                                    <div className="flex items-center gap-1.5 opacity-60">
+                                        <EquipmentIcon equipment={selectedExercise.Equipment || 'Barbell'} className="w-4 h-4 text-[#A3A3A3]" strokeWidth={2.5} />
+                                        <span className="text-sm font-bold text-[#A3A3A3]">{selectedExercise.Equipment || 'Barbell'}</span>
+                                    </div>
                                 </div>
                                 <button onClick={() => setSelectedExercise(null)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all">
                                     <X className="w-6 h-6" />
