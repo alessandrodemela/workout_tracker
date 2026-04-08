@@ -182,8 +182,11 @@ export default function ActiveWorkout() {
         navigate('/home');
     };
 
+    const FUNCTIONAL_TYPES = ['Functional', 'EMOM', 'AMRAP', 'Circuit'];
+    const isFunctionalSession = FUNCTIONAL_TYPES.includes(sessionType);
+
     const handleFinishWorkout = async () => {
-        if (exercises.length === 0 && sessionType !== 'Functional') {
+        if (exercises.length === 0 && !isFunctionalSession) {
             return setAlertConfig({ 
                 isOpen: true, 
                 title: 'Empty Workout', 
@@ -212,7 +215,7 @@ export default function ActiveWorkout() {
             }
         });
 
-        if (validRows.length === 0 && sessionType !== 'Functional') {
+        if (validRows.length === 0 && !isFunctionalSession) {
             setIsSaving(false);
             return setAlertConfig({ 
                 isOpen: true, 
@@ -222,8 +225,17 @@ export default function ActiveWorkout() {
         }
 
         try {
-            if (sessionType === 'Functional') {
-                await saveFunctionalSession({ Date: date, Session_Type: sessionType, Exercise: 'Functional Circuit', Notes: globalNotes }, user.id);
+            if (isFunctionalSession) {
+                // Build splits from the exercise list
+                const splits = exercises.map(ex => ({ title: ex.name, distance: '' }));
+                await saveFunctionalSession({
+                    Date: date,
+                    Session_Type: sessionType,
+                    Exercise: 'Conditioning Circuit',
+                    Notes: globalNotes,
+                    Duration_Seconds: secondsElapsed || null,
+                    Splits: splits.length > 0 ? splits : null
+                }, user.id);
             } else {
                 // Add duration to global notes to be parsed by History
                 const durationNote = `[[D:${secondsElapsed}]]`;
@@ -374,7 +386,7 @@ export default function ActiveWorkout() {
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <div className="flex flex-col">
-                        <h1 className="text-3xl font-black tracking-tight text-white">{sessionType === 'Functional' ? 'Conditioning' : 'Workout'}</h1>
+                        <h1 className="text-3xl font-black tracking-tight text-white">{isFunctionalSession ? 'Conditioning' : 'Workout'}</h1>
                         <p className="text-[#A3A3A3] text-sm">Log your session details</p>
                     </div>
                 </div>
@@ -389,15 +401,61 @@ export default function ActiveWorkout() {
                 <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="input-field py-3 text-sm flex-1 appearance-none">
                     <option value="Standard">Standard</option>
                     <option value="Functional">Functional</option>
-                    {sessionType !== 'Standard' && sessionType !== 'Functional' && (
+                    <option value="EMOM">EMOM</option>
+                    <option value="AMRAP">AMRAP</option>
+                    <option value="Circuit">Circuit</option>
+                    {!['Standard','Functional','EMOM','AMRAP','Circuit'].includes(sessionType) && (
                         <option value={sessionType}>{sessionType.length > 1 ? sessionType : `Split ${sessionType}`}</option>
                     )}
                 </select>
             </div>
 
-            {sessionType === 'Functional' ? (
+            {isFunctionalSession ? (
                 <div className="flex flex-col gap-4">
-                    <textarea className="input-field min-h-[200px]" placeholder="Circuit details..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
+                    {/* Simplified exercise list for functional sessions */}
+                    {exercises.length > 0 && (
+                        <div className="flex flex-col gap-2">
+                            {exercises.map((ex, idx) => (
+                                <div key={idx} className="flex items-center justify-between bg-[#171717] border border-[#262626] rounded-2xl px-4 py-3">
+                                    <div className="flex items-center gap-3">
+                                        <span className="w-6 h-6 rounded-full bg-brand-500/20 text-brand-500 text-[10px] font-black flex items-center justify-center">{idx + 1}</span>
+                                        <span className="text-sm font-bold text-white">{ex.name}</span>
+                                    </div>
+                                    <button
+                                        onClick={() => setExercises(exercises.filter((_, i) => i !== idx))}
+                                        className="text-[#A3A3A3] hover:text-red-500 transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4 rotate-45" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {isAddingExercise ? (
+                        <div className="card-glass flex flex-col gap-4 animate-slide-up">
+                            <div className="flex justify-between items-center">
+                                <h3 className="text-sm font-bold">Add Movement</h3>
+                                <button onClick={() => setIsAddingExercise(false)} className="text-[#A3A3A3] text-xs">Cancel</button>
+                            </div>
+                            <select value={selectedExercise} onChange={e => setSelectedExercise(e.target.value)} className="input-field appearance-none">
+                                <option value="">Select exercise...</option>
+                                {masterExercises.map((ex, i) => <option key={i} value={ex}>{ex}</option>)}
+                            </select>
+                            <PrimaryButton onClick={() => {
+                                if (!selectedExercise) return;
+                                setExercises([...exercises, { name: selectedExercise, sets: [] }]);
+                                setIsAddingExercise(false);
+                                setSelectedExercise('');
+                            }} disabled={!selectedExercise}>Add</PrimaryButton>
+                        </div>
+                    ) : (
+                        <button onClick={() => setIsAddingExercise(true)} className="w-full py-4 rounded-[2rem] border-2 border-dashed border-[#262626] text-[#A3A3A3] font-bold hover:border-brand-500 hover:text-brand-500 transition-all flex items-center justify-center gap-2">
+                            <Plus className="w-5 h-5" /> Add Movement
+                        </button>
+                    )}
+
+                    <textarea className="input-field min-h-[120px]" placeholder="Session notes..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
                 </div>
             ) : (
                 <div className="flex flex-col gap-6">

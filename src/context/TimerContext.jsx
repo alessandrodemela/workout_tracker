@@ -19,6 +19,7 @@ export const TimerProvider = ({ children }) => {
     const [currentRound, setCurrentRound] = useState(1);
     const [currentCycle, setCurrentCycle] = useState(1);
     const [isActive, setIsActive] = useState(false);
+    const [timerExercises, setTimerExercises] = useState([]); // Pre-selected exercises for guidance
 
     const activeConfig = activeTimerMode ? config[activeTimerMode] : config.circuit;
 
@@ -108,7 +109,8 @@ export const TimerProvider = ({ children }) => {
         handleNextPhase();
     };
 
-    const startTimer = () => {
+    const startTimer = (exercises = []) => {
+        if (exercises.length > 0) setTimerExercises(exercises);
         playBeep(440, 'sine', 0.001); // Unlock audio context on user gesture
         setIsConfiguring(false);
         setPhase('Prepare');
@@ -117,6 +119,14 @@ export const TimerProvider = ({ children }) => {
         setCurrentCycle(1);
         setIsActive(true);
     };
+
+    // Derive current and next exercise from the round index (wraps around if needed)
+    const currentExercise = timerExercises.length > 0
+        ? timerExercises[(currentRound - 1) % timerExercises.length]
+        : null;
+    const nextExercise = timerExercises.length > 0
+        ? timerExercises[currentRound % timerExercises.length]
+        : null;
 
     const pauseTimer = () => setIsActive(false);
     const resumeTimer = () => {
@@ -152,7 +162,8 @@ export const TimerProvider = ({ children }) => {
         activeTimerMode, setActiveTimerMode,
         phase, setPhase, timeLeft, setTimeLeft, currentRound, setCurrentRound,
         currentCycle, setCurrentCycle, isActive, setIsActive,
-        startTimer, pauseTimer, resumeTimer, stopTimer, skipPhase
+        startTimer, pauseTimer, resumeTimer, stopTimer, skipPhase,
+        timerExercises, setTimerExercises, currentExercise, nextExercise
     };
 
     return <TimerContext.Provider value={value}>{children}</TimerContext.Provider>;

@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
-import { Timer, Activity, Repeat, Zap } from 'lucide-react';
+import { Timer, Activity, Repeat, Zap, Flag } from 'lucide-react';
 import ConditioningTimer from '../components/ConditioningTimer';
+import HyroxTimer from '../components/HyroxTimer';
 import { useTimer } from '../context/TimerContext';
 import ConfirmModal from '../components/ConfirmModal';
 
 export default function ConditioningScreen() {
-    const { phase, activeTimerMode, setActiveTimerMode } = useTimer();
+    const { activeTimerMode, setActiveTimerMode } = useTimer();
     const [showAlert, setShowAlert] = useState(false);
+    const [showHyrox, setShowHyrox] = useState(false);
 
     const timerModes = [
         { id: 'circuit', title: 'Circuit', description: 'Custom work/rest intervals with multiple cycles', icon: Timer },
@@ -27,6 +29,14 @@ export default function ConditioningScreen() {
         return (
             <div className="h-full flex flex-col">
                 <ConditioningTimer onClose={() => setActiveTimerMode(null)} />
+            </div>
+        );
+    }
+
+    if (showHyrox) {
+        return (
+            <div className="h-full flex flex-col">
+                <HyroxTimer onClose={() => setShowHyrox(false)} />
             </div>
         );
     }
@@ -57,6 +67,25 @@ export default function ConditioningScreen() {
                         </div>
                     </button>
                 ))}
+            </div>
+
+            <hr className="border-[#262626] my-2 opacity-50" />
+
+            <div className="flex flex-col">
+                <button
+                    onClick={() => setShowHyrox(true)}
+                    className="w-full card-glass p-6 text-left flex justify-between items-center group relative overflow-hidden transition-all duration-300 hover:border-brand-500 hover:shadow-[0_0_20px_rgba(212,255,0,0.1)] active:scale-95"
+                >
+                    <div className="flex items-center gap-4 relative z-10">
+                        <div className="w-12 h-12 rounded-full bg-[#171717] flex items-center justify-center text-brand-500 border border-[#262626]">
+                            <Flag className="w-6 h-6" />
+                        </div>
+                        <div className="flex flex-col">
+                            <span className="text-xl font-black tracking-tight text-white">HYROX</span>
+                            <span className="text-[#A3A3A3] text-xs font-bold">Full Race or Half Race Lap Timer</span>
+                        </div>
+                    </div>
+                </button>
             </div>
 
             <ConfirmModal

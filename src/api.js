@@ -143,7 +143,9 @@ export const getWorkoutHistory = async () => {
         ...f,
         Date: f.date,
         Session_Type: f.session_type,
-        Exercise: f.exercise
+        Exercise: f.exercise,
+        Duration_Seconds: f.duration_seconds,
+        Splits: f.splits
     }));
 
     return { 
@@ -182,7 +184,7 @@ export const saveWorkoutSession = async (session, userId) => {
 };
 
 export const saveFunctionalSession = async (session, userId) => {
-    const { Date: sessionDate, Session_Type, Exercise, Notes } = session || {};
+    const { Date: sessionDate, Session_Type, Exercise, Notes, Duration_Seconds, Splits } = session || {};
     const dateObj = new Date(sessionDate);
     const weekNum = getWeekNumber(dateObj);
 
@@ -194,7 +196,9 @@ export const saveFunctionalSession = async (session, userId) => {
             session_type: Session_Type,
             exercise: Exercise || 'Functional Circuit',
             notes: Notes,
-            user_id: userId
+            user_id: userId,
+            duration_seconds: Duration_Seconds || null,
+            splits: Splits || null
         }]);
 
     if (error) throw error;

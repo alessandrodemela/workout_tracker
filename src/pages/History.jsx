@@ -18,16 +18,21 @@ export default function History({ isEmbedded = false }) {
     };
 
     const groupedSessions = useMemo(() => {
-        if (!history?.workouts) return [];
+        if (!history?.workouts && !history?.functional) return [];
+        const combined = [...(history?.workouts || []), ...(history?.functional || [])];
         const groups = {};
 
-        history.workouts.forEach(log => {
-            const key = `${log.Date}_${log.Session_Type}`;
+        combined.forEach(log => {
+            const isFunctional = 'Duration_Seconds' in log;
+            const key = isFunctional ? `${log.Date}_${log.Session_Type}_${log.id || Math.random()}` : `${log.Date}_${log.Session_Type}`;
+
             if (!groups[key]) {
-                // Try to find duration metadata in global notes (which is typically in one of the logs for the session or if we group them)
-                // In this implementation, the backend likely repeated the notes field across all rows for the session
                 const durationMatch = log.notes?.match(/\[\[D:(\d+)\]\]/);
-                const actualDuration = durationMatch ? Math.round(parseInt(durationMatch[1]) / 60) : null;
+                let actualDuration = durationMatch ? Math.round(parseInt(durationMatch[1]) / 60) : null;
+                
+                if (isFunctional && log.Duration_Seconds) {
+                    actualDuration = Math.round(log.Duration_Seconds / 60);
+                }
 
                 groups[key] = {
                     key,
@@ -38,31 +43,35 @@ export default function History({ isEmbedded = false }) {
                     totalVolume: 0,
                     duration: actualDuration,
                     timeFallback: 0,
-                    muscleGroups: new Set()
+                    muscleGroups: new Set(),
+                    isFunctional: isFunctional,
+                    notes: log.notes,
+                    splits: log.Splits
                 };
             }
 
-            groups[key].exercises.push(log);
-            groups[key].totalSets += parseInt(log.Sets) || 0;
-            if (log.Target_Muscle) groups[key].muscleGroups.add(log.Target_Muscle);
+            if (!isFunctional) {
+                groups[key].exercises.push(log);
+                groups[key].totalSets += parseInt(log.Sets) || 0;
+                if (log.Target_Muscle) groups[key].muscleGroups.add(log.Target_Muscle);
 
-            // Volume Calculation: Use the [[W:...]] metadata if available, otherwise fallback to Kg * reps
-            const weightMatch = log.notes?.match(/\[\[W:([\d.,]+)\]\]/);
-            const repsArr = (log.Reps || '').toString().split(',').map(r => parseInt(r.trim()) || 0);
-            
-            let exerciseVolume = 0;
-            if (weightMatch) {
-                const weights = weightMatch[1].split(',').map(w => parseFloat(w.trim()) || 0);
-                repsArr.forEach((reps, i) => {
-                    const weight = weights[i] !== undefined ? weights[i] : (weights[weights.length - 1] || 0);
-                    exerciseVolume += reps * weight;
-                });
-            } else {
-                const kg = parseFloat(log.Kg) || 0;
-                exerciseVolume = repsArr.reduce((acc, reps) => acc + (reps * kg), 0);
+                const weightMatch = log.notes?.match(/\[\[W:([\d.,]+)\]\]/);
+                const repsArr = (log.Reps || '').toString().split(',').map(r => parseInt(r.trim()) || 0);
+                
+                let exerciseVolume = 0;
+                if (weightMatch) {
+                    const weights = weightMatch[1].split(',').map(w => parseFloat(w.trim()) || 0);
+                    repsArr.forEach((reps, i) => {
+                        const weight = weights[i] !== undefined ? weights[i] : (weights[weights.length - 1] || 0);
+                        exerciseVolume += reps * weight;
+                    });
+                } else {
+                    const kg = parseFloat(log.Kg) || 0;
+                    exerciseVolume = repsArr.reduce((acc, reps) => acc + (reps * kg), 0);
+                }
+                
+                groups[key].totalVolume += exerciseVolume / 1000;
             }
-            
-            groups[key].totalVolume += exerciseVolume / 1000;
         });
 
         return Object.values(groups).sort((a, b) => new Date(b.date) - new Date(a.date)).map(s => {
@@ -268,33 +277,68 @@ export default function History({ isEmbedded = false }) {
 
                         {expandedSession === session.key && (
                             <div className="mt-8 flex flex-col gap-8 border-t border-[#171717] pt-8 animate-slide-down">
-                                {session.exercises.map((ex, idx) => (
-                                    <div key={idx} className="flex flex-col gap-3">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(212,255,0,0.5)]" style={{ background: MUSCLE_GROUP_COLORS[ex.Target_Muscle] || '#D4FF00' }}></div>
-                                            <span className="text-lg font-black text-white tracking-tight">{ex.Exercise}</span>
+                                {session.isFunctional ? (
+                                    <div className="flex flex-col gap-4">
+                                        <div className="bg-[#171717] border border-[#262626] p-4 rounded-2xl flex flex-col gap-2">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Session Notes</span>
+                                            <p className="text-sm font-bold text-white whitespace-pre-wrap">{session.notes || 'No notes for this session.'}</p>
                                         </div>
-                                        <div className="flex flex-wrap gap-2.5">
-                                            {(ex.Reps || '').toString().split(',').filter(r => r.trim() !== '').map((rep, rIdx) => {
-                                                const weightMatch = ex.notes?.match(/\[\[W:([\d.,]+)\]\]/);
-                                                let displayKg = ex.Kg || 0;
-                                                if (weightMatch) {
-                                                    const weights = weightMatch[1].split(',');
-                                                    displayKg = weights[rIdx] || weights[weights.length - 1] || displayKg;
-                                                }
-                                                return (
-                                                    <div key={rIdx} className="bg-[#171717] border border-[#262626] py-2 px-4 rounded-xl flex items-center gap-1.5 min-w-[80px] justify-center">
-                                                        <span className="text-[10px] font-bold text-[#A3A3A3]">{rIdx + 1} ·</span>
-                                                        <span className="text-sm font-black text-white">{parseFloat(displayKg).toFixed(2)}</span>
-                                                        <span className="text-[10px] font-bold text-[#A3A3A3]">kg</span>
-                                                        <span className="text-[10px] font-black text-[#A3A3A3]">×</span>
-                                                        <span className="text-sm font-black text-white">{rep.trim()}</span>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                        {session.splits && Array.isArray(session.splits) && session.splits.length > 0 && (
+                                            <div className="flex flex-col gap-2">
+                                                <h4 className="text-xs font-black uppercase tracking-widest text-[#A3A3A3] mb-2">Splits</h4>
+                                                {session.splits.map((split, sIdx) => {
+                                                    const m = Math.floor(split.duration / 60);
+                                                    const s = split.duration % 60;
+                                                    const timeStr = `${m}:${s < 10 ? '0'+s : s}`;
+                                                    return (
+                                                        <div key={sIdx} className="bg-[#171717]/50 border border-[#262626] p-3 rounded-xl flex justify-between items-center group hover:border-[#404040] transition-colors">
+                                                            <div className="flex items-center gap-3">
+                                                                <div className="w-6 h-6 rounded-full bg-[#0A0A0A] border border-[#262626] flex items-center justify-center text-[9px] font-black text-[#A3A3A3]">
+                                                                    {sIdx + 1}
+                                                                </div>
+                                                                <div className="flex flex-col">
+                                                                    <span className="text-xs font-bold text-white">{split.title}</span>
+                                                                    <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">{split.distance}</span>
+                                                                </div>
+                                                            </div>
+                                                            <span className="text-sm font-black text-brand-500 tabular-nums">
+                                                                {timeStr}
+                                                            </span>
+                                                        </div>
+                                                    )
+                                                })}
+                                            </div>
+                                        )}
                                     </div>
-                                ))}
+                                ) : (
+                                    session.exercises.map((ex, idx) => (
+                                        <div key={idx} className="flex flex-col gap-3">
+                                            <div className="flex items-center gap-3">
+                                                <div className="w-2 h-2 rounded-full shadow-[0_0_8px_rgba(212,255,0,0.5)]" style={{ background: MUSCLE_GROUP_COLORS[ex.Target_Muscle] || '#D4FF00' }}></div>
+                                                <span className="text-lg font-black text-white tracking-tight">{ex.Exercise}</span>
+                                            </div>
+                                            <div className="flex flex-wrap gap-2.5">
+                                                {(ex.Reps || '').toString().split(',').filter(r => r.trim() !== '').map((rep, rIdx) => {
+                                                    const weightMatch = ex.notes?.match(/\[\[W:([\d.,]+)\]\]/);
+                                                    let displayKg = ex.Kg || 0;
+                                                    if (weightMatch) {
+                                                        const weights = weightMatch[1].split(',');
+                                                        displayKg = weights[rIdx] || weights[weights.length - 1] || displayKg;
+                                                    }
+                                                    return (
+                                                        <div key={rIdx} className="bg-[#171717] border border-[#262626] py-2 px-4 rounded-xl flex items-center gap-1.5 min-w-[80px] justify-center">
+                                                            <span className="text-[10px] font-bold text-[#A3A3A3]">{rIdx + 1} ·</span>
+                                                            <span className="text-sm font-black text-white">{parseFloat(displayKg).toFixed(2)}</span>
+                                                            <span className="text-[10px] font-bold text-[#A3A3A3]">kg</span>
+                                                            <span className="text-[10px] font-black text-[#A3A3A3]">×</span>
+                                                            <span className="text-sm font-black text-white">{rep.trim()}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
                             </div>
                         )}
                     </div>

@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
-import { Play, Pause, Plus, Minus, Settings2, ChevronLeft, SkipForward, Square, Clock, Zap, Coffee, Repeat, RefreshCw, Timer } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Play, Pause, Plus, Minus, Settings2, ChevronLeft, SkipForward, Square, Clock, Zap, Coffee, Repeat, RefreshCw, Timer, X, ChevronRight } from 'lucide-react';
 import { useTimer } from '../context/TimerContext';
 import { useWorkout } from '../context/WorkoutContext';
 import ConfirmModal from './ConfirmModal';
+import { useNavigate } from 'react-router-dom';
+import useSWR from 'swr';
+import { API_URL, fetcher } from '../api';
 
 // Reusable config row component
 function ConfigRow({ icon, iconBg, title, subtitle, borderHover, value, unit, onDecrement, onIncrement, onChange }) {
@@ -35,18 +38,29 @@ function ConfigRow({ icon, iconBg, title, subtitle, borderHover, value, unit, on
 }
 
 export default function ConditioningTimer({ onClose }) {
+    const navigate = useNavigate();
     const {
         config, updateConfig, isConfiguring, setIsConfiguring,
         phase, timeLeft, currentRound, currentCycle, isActive,
-        startTimer, pauseTimer, resumeTimer, stopTimer, skipPhase, activeTimerMode
+        startTimer, pauseTimer, resumeTimer, stopTimer, skipPhase, activeTimerMode,
+        timerExercises, setTimerExercises, currentExercise, nextExercise
     } = useTimer();
 
     const modeName = activeTimerMode === 'emom' ? 'EMOM' : activeTimerMode === 'amrap' ? 'AMRAP' : 'Circuit';
 
-    const { isActive: isWorkoutActive, cancelWorkout } = useWorkout();
+    const { isActive: isWorkoutActive, cancelWorkout, startWorkout } = useWorkout();
+    const { data: exercisesData } = useSWR(`${API_URL}/exercises`, fetcher);
+    const masterExercises = exercisesData?.exercises || [];
 
     const [showStopModal, setShowStopModal] = useState(false);
     const [showWorkoutConflictModal, setShowWorkoutConflictModal] = useState(false);
+    const [exerciseSearch, setExerciseSearch] = useState('');
+    const [showExercisePicker, setShowExercisePicker] = useState(false);
+
+    const filteredMaster = useMemo(() =>
+        masterExercises.filter(e => e.toLowerCase().includes(exerciseSearch.toLowerCase())).slice(0, 20),
+        [masterExercises, exerciseSearch]
+    );
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
@@ -66,6 +80,45 @@ export default function ConditioningTimer({ onClose }) {
     const makeChangeHandler = (key) => (e) => {
         const val = e.target.value.replace(/\D/g, '');
         updateConfig(key, val === '' ? 0 : parseInt(val));
+    };
+
+    const addExercise = (name) => {
+        setTimerExercises(prev => [...prev, name]);
+        setExerciseSearch('');
+        setShowExercisePicker(false);
+    };
+
+    const removeExercise = (idx) => {
+        setTimerExercises(prev => prev.filter((_, i) => i !== idx));
+    };
+
+    const handleSaveSession = () => {
+        let notesText = '';
+        if (activeTimerMode === 'emom') notesText = `EMOM: ${config.rounds} Rds of ${config.workTime}s`;
+        if (activeTimerMode === 'amrap') notesText = `AMRAP: ${config.workTime / 60} min total`;
+        if (activeTimerMode === 'circuit') notesText = `Circuit: ${config.cycles} Cycles × ${config.rounds} Rds (${config.workTime}s work / ${config.restTime}s rest)`;
+
+        let theoreticalDuration = 0;
+        if (activeTimerMode === 'emom') theoreticalDuration = config.rounds * config.workTime;
+        if (activeTimerMode === 'amrap') theoreticalDuration = config.workTime;
+        if (activeTimerMode === 'circuit') theoreticalDuration = config.cycles * (config.rounds * (config.workTime + config.restTime) + config.cycleRestTime);
+
+        // Hand off: build exercise list for ActiveWorkout
+        const exercisesForLog = timerExercises.map(name => ({
+            name,
+            sets: [{ kg: '', reps: '', rpe: 8, completed: false }]
+        }));
+
+        stopTimer();
+
+        startWorkout({
+            sessionType: modeName,
+            globalNotes: notesText,
+            secondsElapsed: theoreticalDuration,
+            exercises: exercisesForLog
+        });
+
+        navigate('/active-workout');
     };
 
     // ─── Config View ───────────────────────────────────────────────────────────
@@ -162,12 +215,76 @@ export default function ConditioningTimer({ onClose }) {
                             />
                         </>
                     )}
+
+                    {/* ─── Exercise Sequence ─── */}
+                    <div className="flex flex-col gap-3 bg-[#171717]/30 p-4 rounded-3xl border border-[#262626]">
+                        <div className="flex items-center justify-between">
+                            <div className="flex flex-col">
+                                <span className="text-xs font-black uppercase tracking-widest text-white">Exercise Sequence</span>
+                                <span className="text-[10px] font-bold text-[#A3A3A3]">Optional — shown during round</span>
+                            </div>
+                            <button
+                                onClick={() => setShowExercisePicker(v => !v)}
+                                className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-black hover:bg-brand-400 transition-all"
+                            >
+                                <Plus className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        {/* Exercise picker dropdown */}
+                        {showExercisePicker && (
+                            <div className="flex flex-col gap-2 animate-fade-in">
+                                <input
+                                    autoFocus
+                                    type="text"
+                                    placeholder="Search exercises..."
+                                    value={exerciseSearch}
+                                    onChange={e => setExerciseSearch(e.target.value)}
+                                    className="w-full bg-[#0A0A0A] border border-[#404040] rounded-2xl px-4 py-3 text-white text-sm placeholder-[#A3A3A3] focus:outline-none focus:border-brand-500"
+                                />
+                                <div className="flex flex-col gap-1 max-h-40 overflow-y-auto">
+                                    {filteredMaster.map(ex => (
+                                        <button
+                                            key={ex}
+                                            onClick={() => addExercise(ex)}
+                                            className="text-left px-4 py-3 text-sm font-bold text-white bg-[#0A0A0A] border border-[#262626] rounded-xl hover:border-brand-500 hover:text-brand-500 transition-all flex items-center justify-between"
+                                        >
+                                            {ex}
+                                            <ChevronRight className="w-4 h-4 opacity-40" />
+                                        </button>
+                                    ))}
+                                    {filteredMaster.length === 0 && (
+                                        <p className="text-xs text-[#A3A3A3] text-center py-2">No exercises found</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Selected exercises list */}
+                        {timerExercises.length > 0 ? (
+                            <div className="flex flex-col gap-2">
+                                {timerExercises.map((ex, idx) => (
+                                    <div key={idx} className="flex items-center justify-between bg-[#0A0A0A] border border-[#262626] rounded-xl px-4 py-3">
+                                        <div className="flex items-center gap-3">
+                                            <span className="w-5 h-5 rounded-full bg-brand-500/20 text-brand-500 text-[10px] font-black flex items-center justify-center">{idx + 1}</span>
+                                            <span className="text-sm font-bold text-white">{ex}</span>
+                                        </div>
+                                        <button onClick={() => removeExercise(idx)} className="text-[#A3A3A3] hover:text-red-500 transition-colors">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-[#A3A3A3] text-center py-1">No exercises selected — timer will run without guidance</p>
+                        )}
+                    </div>
                 </div>
 
                 {/* Sticky Start button */}
                 <div className="flex-shrink-0 py-4 border-t border-[#262626]">
                     <button
-                        onClick={(e) => { e.stopPropagation(); isWorkoutActive ? setShowWorkoutConflictModal(true) : startTimer(); }}
+                        onClick={(e) => { e.stopPropagation(); isWorkoutActive ? setShowWorkoutConflictModal(true) : startTimer(timerExercises); }}
                         className="w-full py-5 rounded-[2rem] bg-brand-500 text-black font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95 transition-transform cursor-pointer"
                     >
                         <Play className="w-6 h-6 fill-black" />
@@ -179,12 +296,12 @@ export default function ConditioningTimer({ onClose }) {
                     isOpen={showWorkoutConflictModal}
                     onClose={() => {
                         setShowWorkoutConflictModal(false);
-                        onClose(); // Exit the setup mode so the workout banner reappears
+                        onClose();
                     }}
                     onConfirm={() => {
-                        cancelWorkout(); // Stop the workout
+                        cancelWorkout();
                         setShowWorkoutConflictModal(false);
-                        startTimer(); // Start the mode
+                        startTimer(timerExercises);
                     }}
                     title="Stop Active Workout?"
                     message={`You have a workout session active. Starting a ${modeName.toLowerCase()} will end your current workout. Continue?`}
@@ -216,20 +333,56 @@ export default function ConditioningTimer({ onClose }) {
             </div>
 
             {/* Big timer display — grows to fill space */}
-            <div className="flex flex-col items-center justify-center flex-1">
+            <div className="flex flex-col items-center justify-center flex-1 py-8 px-4 w-full">
+                {/* Current exercise guidance */}
+                {currentExercise && phase === 'Work' && (
+                    <div className="flex flex-col items-center gap-1 animate-fade-in mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3A3A3]">Now</span>
+                        <span className="text-3xl font-black text-white tracking-tight text-center">{currentExercise}</span>
+                    </div>
+                )}
+                {phase === 'Prepare' && currentExercise && (
+                    <div className="flex flex-col items-center gap-1 animate-fade-in mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3A3A3]">Get ready for</span>
+                        <span className="text-3xl font-black text-white tracking-tight text-center">{currentExercise}</span>
+                    </div>
+                )}
+                {phase === 'Rest' && nextExercise && currentRound < config.rounds && (
+                    <div className="flex flex-col items-center gap-1 animate-fade-in mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3A3A3]">Up Next</span>
+                        <span className="text-3xl font-black text-white tracking-tight text-center">{nextExercise}</span>
+                    </div>
+                )}
+                {phase === 'CycleRest' && timerExercises.length > 0 && currentCycle < config.cycles && (
+                    <div className="flex flex-col items-center gap-1 animate-fade-in mb-4">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#A3A3A3]">Next Cycle Starts With</span>
+                        <span className="text-3xl font-black text-white tracking-tight text-center">{timerExercises[0]}</span>
+                    </div>
+                )}
+
                 <span className={`text-2xl font-black uppercase tracking-widest ${phaseColors[phase]}`}>
                     {phase}
                 </span>
-                <span className={`text-[110px] leading-none font-black tabular-nums tracking-tighter mt-2 ${timeLeft <= 5 && phase === 'Work' ? 'text-brand-500 animate-pulse' : 'text-white'}`}>
+                <span className={`text-[110px] leading-none font-black tabular-nums tracking-tighter ${timeLeft <= 5 && phase === 'Work' ? 'text-brand-500 animate-pulse' : 'text-white'}`}>
                     {formatTime(timeLeft)}
                 </span>
+
+                {/* Next exercise preview styled like Hyrox */}
+                {nextExercise && phase === 'Work' && currentRound < config.rounds && (
+                    <div className="w-full mt-8 flex items-center justify-between px-6 py-4 bg-[#0A0A0A] border border-[#262626] rounded-2xl opacity-70">
+                        <div className="flex items-center gap-3">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Next</span>
+                            <span className="text-sm font-bold text-white">{nextExercise}</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Round / Cycle counters */}
             {activeTimerMode !== 'amrap' && (
                 <div className={`grid ${activeTimerMode === 'circuit' ? 'grid-cols-2' : 'grid-cols-1'} gap-4 border-t border-[#262626] pt-5 mb-5 flex-shrink-0`}>
                     <div className="flex flex-col items-center bg-[#171717] rounded-3xl p-4">
-                        <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">{activeTimerMode === 'emom' ? 'Round' : 'Round'}</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Round</span>
                         <span className="text-3xl font-black text-white">{currentRound} / {config.rounds}</span>
                     </div>
                     {activeTimerMode === 'circuit' && (
@@ -271,12 +424,20 @@ export default function ConditioningTimer({ onClose }) {
                         </button>
                     </>
                 ) : (
-                    <button
-                        onClick={(e) => { e.stopPropagation(); stopTimer(); onClose(); }}
-                        className="w-full py-5 rounded-[2rem] bg-brand-500 text-black font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95 transition-transform cursor-pointer"
-                    >
-                        Finish {modeName}
-                    </button>
+                    <div className="flex gap-3 w-full">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); stopTimer(); onClose(); }}
+                            className="flex-1 py-5 rounded-[2rem] bg-[#171717] border border-[#262626] text-[#A3A3A3] font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 hover:text-white transition-all cursor-pointer"
+                        >
+                            Discard
+                        </button>
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleSaveSession(); }}
+                            className="flex-[2] py-5 rounded-[2rem] bg-brand-500 text-black font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95 transition-transform cursor-pointer"
+                        >
+                            Log {modeName}
+                        </button>
+                    </div>
                 )}
             </div>
 
