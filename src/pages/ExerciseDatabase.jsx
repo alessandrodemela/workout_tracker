@@ -77,10 +77,10 @@ export default function ExerciseDatabase() {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!formData.Exercise_Name) return setAlertConfig({ 
-            isOpen: true, 
-            title: 'Name Required', 
-            message: 'Please provide a name for the new exercise.' 
+        if (!formData.Exercise_Name) return setAlertConfig({
+            isOpen: true,
+            title: 'Name Required',
+            message: 'Please provide a name for the new exercise.'
         });
 
         setIsSaving(true);
@@ -89,11 +89,11 @@ export default function ExerciseDatabase() {
             setFormData({ Exercise_Name: '', Target_Muscle: '', Target_Area: '', Equipment: '', Notes: '' });
             setIsAdding(false);
             mutate();
-        } catch (err) { 
-            setAlertConfig({ 
-                isOpen: true, 
-                title: 'Error', 
-                message: 'Failed to save the new exercise. Please try again.' 
+        } catch (err) {
+            setAlertConfig({
+                isOpen: true,
+                title: 'Error',
+                message: 'Failed to save the new exercise. Please try again.'
             });
         }
         finally { setIsSaving(false); }
@@ -116,7 +116,7 @@ export default function ExerciseDatabase() {
     return (
         <div className="flex flex-col gap-6 pb-32 animate-fade-in relative">
             <div className="flex justify-between items-center mb-2">
-                <h1 className="text-3xl font-black tracking-tight text-white uppercase italic">Exercises</h1>
+                <h1 className="text-3xl font-black tracking-tight text-white uppercase">Exercises</h1>
             </div>
 
             {isAdding && (
@@ -264,14 +264,13 @@ export default function ExerciseDatabase() {
                             )}
 
                             {isActive && (
-                                <button 
+                                <button
                                     onClick={handleAddToWorkout}
                                     disabled={justAdded}
-                                    className={`mt-2 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black transition-all ${
-                                        justAdded 
+                                    className={`mt-2 w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-black transition-all ${justAdded
                                             ? 'bg-[#D4FF00] text-black border border-[#D4FF00]'
                                             : 'bg-[#171717] text-brand-500 border border-brand-500/20 hover:border-brand-500/50 hover:bg-[#262626]'
-                                    }`}
+                                        }`}
                                 >
                                     {justAdded ? (
                                         <>
