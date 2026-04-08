@@ -1,7 +1,7 @@
 // This file is fine, I will just add the plus button
 import React, { useState, useMemo } from 'react';
 import useSWR from 'swr';
-import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle, Dumbbell, Weight, BicepsFlexed, Cable, Cog, Zap } from 'lucide-react';
+import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle, Dumbbell, Weight, BicepsFlexed, Cable, Cog, Zap, Circle, Triangle } from 'lucide-react';
 import { API_URL, fetcher, addExercise } from '../api';
 import PrimaryButton from '../components/PrimaryButton';
 import { useWorkout } from '../context/WorkoutContext';
@@ -13,6 +13,8 @@ const EQUIPMENT_COLORS = {
     'Bodyweight': 'text-red-500 bg-red-500/10 border-red-500/20',
     'Cable': 'text-blue-500 bg-blue-500/10 border-blue-500/20',
     'Machine': 'text-purple-500 bg-purple-500/10 border-purple-500/20',
+    'TRX': 'text-orange-500 bg-orange-500/10 border-orange-500/20',
+    'Kettlebell': 'text-teal-500 bg-teal-500/10 border-teal-500/20',
     'Other': 'text-[#A3A3A3] bg-[#171717] border-[#262626]'
 };
 
@@ -23,6 +25,8 @@ const EquipmentIcon = ({ equipment, className = "w-6 h-6", strokeWidth = 2 }) =>
         case 'bodyweight': return <BicepsFlexed className={className} strokeWidth={strokeWidth} />;
         case 'cable': return <Cable className={className} strokeWidth={strokeWidth} />;
         case 'machine': return <Cog className={className} strokeWidth={strokeWidth} />;
+        case 'trx': return <Triangle className={className} strokeWidth={strokeWidth} />;
+        case 'kettlebell': return <Circle className={className} strokeWidth={strokeWidth} />;
         default: return <Zap className={className} strokeWidth={strokeWidth} />;
     }
 };
@@ -53,6 +57,7 @@ export default function ExerciseDatabase() {
 
     const [search, setSearch] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('All');
+    const [selectedEquipment, setSelectedEquipment] = useState('All');
     const [selectedExercise, setSelectedExercise] = useState(null);
     const [justAdded, setJustAdded] = useState(false);
     const [isAdding, setIsAdding] = useState(false);
@@ -63,6 +68,7 @@ export default function ExerciseDatabase() {
     });
 
     const categories = ['All', ...Array.from(new Set(exercises.map(e => e.Target_Muscle).filter(Boolean)))];
+    const equipmentOptions = ['All', ...Array.from(new Set(exercises.map(e => e.Equipment).filter(Boolean)))];
 
     const loggedExercises = useMemo(() => new Set(workouts.map(w => w.Exercise)), [workouts]);
 
@@ -70,6 +76,7 @@ export default function ExerciseDatabase() {
         let filtered = exercises;
         if (search) filtered = filtered.filter(e => e.Exercise_Name.toLowerCase().includes(search.toLowerCase()));
         if (selectedCategory !== 'All') filtered = filtered.filter(e => e.Target_Muscle === selectedCategory);
+        if (selectedEquipment !== 'All') filtered = filtered.filter(e => e.Equipment === selectedEquipment);
 
         const groups = {};
         filtered.forEach(ex => {
@@ -78,7 +85,7 @@ export default function ExerciseDatabase() {
             groups[m].push(ex);
         });
         return groups;
-    }, [exercises, search, selectedCategory]);
+    }, [exercises, search, selectedCategory, selectedEquipment]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -154,6 +161,8 @@ export default function ExerciseDatabase() {
                             <option value="Machine">Machine</option>
                             <option value="Cable">Cable</option>
                             <option value="Bodyweight">Bodyweight</option>
+                            <option value="TRX">TRX</option>
+                            <option value="Kettlebell">Kettlebell</option>
                             <option value="Other">Other</option>
                         </select>
                         <PrimaryButton type="submit" loading={isSaving}>Register Exercise</PrimaryButton>
@@ -173,19 +182,35 @@ export default function ExerciseDatabase() {
                 />
             </div>
 
-            <div className="flex overflow-x-auto gap-2 pb-2 -mx-6 px-6 snap-x" style={{ scrollbarWidth: 'none' }}>
-                {categories.map(cat => (
-                    <button
-                        key={cat}
-                        onClick={() => setSelectedCategory(cat)}
-                        className={`snap-center flex-shrink-0 px-5 py-2 rounded-full text-xs font-bold transition-all border ${selectedCategory === cat
-                            ? 'bg-[#D4FF00] text-black border-[#D4FF00]'
-                            : 'bg-transparent text-[#A3A3A3] border-[#262626] hover:text-white'
-                            }`}
-                    >
-                        {cat}
-                    </button>
-                ))}
+            <div className="flex flex-col gap-3">
+                <div className="flex overflow-x-auto gap-2 pb-1 -mx-6 px-6 snap-x" style={{ scrollbarWidth: 'none' }}>
+                    {categories.map(cat => (
+                        <button
+                            key={cat}
+                            onClick={() => setSelectedCategory(cat)}
+                            className={`snap-center flex-shrink-0 px-5 py-2 rounded-full text-xs font-bold transition-all border ${selectedCategory === cat
+                                ? 'bg-[#D4FF00] text-black border-[#D4FF00]'
+                                : 'bg-transparent text-[#A3A3A3] border-[#262626] hover:text-white'
+                                }`}
+                        >
+                            {cat}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex overflow-x-auto gap-2 pb-2 -mx-6 px-6 snap-x" style={{ scrollbarWidth: 'none' }}>
+                    {equipmentOptions.map(eq => (
+                        <button
+                            key={eq}
+                            onClick={() => setSelectedEquipment(eq)}
+                            className={`snap-center flex-shrink-0 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all border ${selectedEquipment === eq
+                                ? 'bg-[#A3A3A3] text-black border-[#A3A3A3]'
+                                : 'bg-[#171717] text-[#A3A3A3] border-[#262626] hover:text-white hover:border-[#404040]'
+                                }`}
+                        >
+                            {eq}
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="flex flex-col gap-8">
