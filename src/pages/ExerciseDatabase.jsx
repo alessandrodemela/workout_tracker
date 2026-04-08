@@ -141,7 +141,7 @@ export default function ExerciseDatabase() {
             {isAdding && (
                 <div className="fixed inset-0 z-50 flex items-end justify-center transition-all">
                     <div className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsAdding(false)}></div>
-                    <div className="relative bg-[#0A0A0A] border border-[#171717] rounded-t-[3rem] w-full max-w-xl p-8 flex flex-col animate-slide-up shadow-2xl">
+                    <div className="relative bg-[#0A0A0A] border border-[#171717] rounded-t-[3rem] w-full max-w-xl px-8 pt-8 pb-32 flex flex-col animate-slide-up shadow-2xl">
                         <div className="flex justify-between items-center mb-6">
                             <h2 className="text-2xl font-black text-white px-2">New Exercise</h2>
                             <button onClick={() => setIsAdding(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all">
