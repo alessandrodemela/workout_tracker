@@ -47,7 +47,8 @@ export const getExercises = async () => {
 };
 
 export const getExerciseHistory = async (exerciseName) => {
-    const { data, error } = await supabase
+    // 1. Get classical logs (Weightlifting)
+    const { data: logs, error } = await supabase
         .from('workout_logs')
         .select('*')
         .ilike('exercise', exerciseName)
@@ -55,10 +56,34 @@ export const getExerciseHistory = async (exerciseName) => {
     
     if (error) throw error;
 
-    // Calculate PB
+    // 2. Get functional logs (EMOM/AMRAP/Circuit)
+    const { data: functional } = await supabase
+        .from('functional_logs')
+        .select('*')
+        .order('date', { ascending: false });
+
+    // Filter functional sessions that included this exercise in their splits
+    const relatedFunctional = (functional || []).filter(f => 
+        f.splits && Array.isArray(f.splits) && f.splits.some(s => s.title?.toLowerCase() === exerciseName.toLowerCase())
+    );
+
+    // Map functional participations to a compatible log format
+    const functionalAsLogs = relatedFunctional.map(f => ({
+        ...f,
+        exercise: exerciseName,
+        kg: 0, 
+        sets: 1,
+        reps: 'Done',
+        is_functional_participation: true
+    }));
+
+    // 3. Merge and Sort
+    const allData = [...logs, ...functionalAsLogs].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Calculate PB from classical logs only (since functional has no weight)
     let pb = null;
     let currentMaxKg = -1;
-    data.forEach(log => {
+    logs.forEach(log => {
         const kg = parseFloat(log.kg || 0);
         if (kg > currentMaxKg) {
             currentMaxKg = kg;
@@ -66,15 +91,16 @@ export const getExerciseHistory = async (exerciseName) => {
         }
     });
 
-    const formattedHistory = data.map(log => ({
+    const formattedHistory = allData.map(log => ({
         ...log,
         Date: log.date,
         Exercise: toTitleCase(log.exercise),
-        Kg: log.kg,
+        Kg: log.kg || 0,
         Sets: log.sets,
         Reps: log.reps,
-        RPE: log.rpe,
-        Notes: log.notes
+        RPE: log.rpe || 8,
+        Notes: log.notes,
+        Type: log.is_functional_participation ? 'Functional' : 'Weight'
     }));
 
     const formattedPb = pb ? {
@@ -172,7 +198,7 @@ export const saveWorkoutSession = async (session, userId) => {
         week: weekNum,
         session_type: Session_Type,
         mesocycle: Mesocycle,
-        exercise: ex.Exercise.toLowerCase(),
+        exercise: ex.Exercise,
         kg: ex.Kg,
         sets: ex.Sets,
         reps: ex.Reps,
@@ -200,7 +226,7 @@ export const saveFunctionalSession = async (session, userId) => {
             date: sessionDate,
             week: weekNum,
             session_type: Session_Type,
-            exercise: (Exercise || 'Functional Circuit').toLowerCase(),
+            exercise: (Exercise || 'Functional Circuit'),
             notes: Notes,
             user_id: userId,
             duration_seconds: Duration_Seconds || null,
@@ -228,10 +254,10 @@ export const addExercise = async (ex) => {
     const { error } = await supabase
         .from('exercises')
         .insert([{
-            name: ex.Exercise_Name.toLowerCase(),
-            target_muscle: ex.Target_Muscle.toLowerCase(),
-            target_area: ex.Target_Area.toLowerCase(),
-            equipment: ex.Equipment.toLowerCase(),
+            name: ex.Exercise_Name,
+            target_muscle: ex.Target_Muscle,
+            target_area: ex.Target_Area,
+            equipment: ex.Equipment,
             notes: ex.Notes || ''
         }]);
 
@@ -241,10 +267,10 @@ export const addExercise = async (ex) => {
 
 export const bulkAddExercises = async (exercises) => {
     const rows = exercises.map(ex => ({
-        name: ex.Exercise_Name.toLowerCase(),
-        target_muscle: ex.Target_Muscle.toLowerCase(),
-        target_area: ex.Target_Area.toLowerCase(),
-        equipment: ex.Equipment.toLowerCase(),
+        name: ex.Exercise_Name,
+        target_muscle: ex.Target_Muscle,
+        target_area: ex.Target_Area,
+        equipment: ex.Equipment,
         notes: ex.Notes || ''
     }));
 

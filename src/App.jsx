@@ -46,14 +46,14 @@ function AppContent() {
     return (
         <div className="h-dvh flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30 overflow-hidden relative">
             {/* Global User Menu - Top Right */}
-            {showNav && user && location.pathname !== '/workout' && location.pathname !== '/conditioning' && location.pathname !== '/profile' && (
+            {showNav && user && location.pathname !== '/workout' && location.pathname !== '/profile' && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg z-50 pointer-events-none">
                     <UserMenu />
                 </div>
             )}
 
             {/* Scrollable page content — sits above the fixed nav */}
-            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-20 ${showNav ? 'pb-[calc(env(safe-area-inset-bottom,20px)+96px)]' : 'pb-0'}`}>
+            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-16 ${showNav ? 'pb-[calc(env(safe-area-inset-bottom,20px)+96px)]' : 'pb-0'}`}>
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />

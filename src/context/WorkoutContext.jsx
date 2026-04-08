@@ -12,12 +12,18 @@ export function WorkoutProvider({ children }) {
     const [exercises, setExercises] = useState([]);
     const [globalNotes, setGlobalNotes] = useState('');
     const [secondsElapsed, setSecondsElapsed] = useState(0);
+    const [manualDuration, setManualDuration] = useState(''); // persisted across navigation in log mode
+    const [isDurationLocked, setIsDurationLocked] = useState(false); // true when duration comes from a real timer
     const [restTimer, setRestTimer] = useState({ isActive: false, secondsRemaining: 0, duration: 0 });
     const [isRestTimerExpanded, setIsRestTimerExpanded] = useState(false);
+    // Log mode: if true, timer does NOT tick (retroactive session logging)
+    const [isLogMode, setIsLogMode] = useState(false);
+
     // Use useLayoutEffect so isContextReady is true before the first paint
     useLayoutEffect(() => {
         setIsContextReady(true);
     }, []);
+
     useEffect(() => {
         if (isActive && typeof Notification !== 'undefined' && Notification.permission === 'default') {
             Notification.requestPermission();
@@ -26,13 +32,14 @@ export function WorkoutProvider({ children }) {
 
     useEffect(() => {
         let interval;
-        if (isActive) {
+        // Only tick when active AND not in log mode
+        if (isActive && !isLogMode) {
             interval = setInterval(() => {
                 setSecondsElapsed(prev => prev + 1);
             }, 1000);
         }
         return () => clearInterval(interval);
-    }, [isActive]);
+    }, [isActive, isLogMode]);
 
     const audioContextRef = useRef(null);
 
@@ -127,26 +134,42 @@ export function WorkoutProvider({ children }) {
     }, []);
 
     const startWorkout = useCallback((initialData = {}) => {
+        const logMode = initialData.isLog ?? false;
+        setIsLogMode(logMode);
         setDate(initialData.date || new Date().toISOString().split('T')[0]);
         setSessionType(initialData.sessionType || 'Standard');
         setExercises(initialData.exercises || []);
         setGlobalNotes(initialData.globalNotes || '');
         setSecondsElapsed(initialData.secondsElapsed || 0);
-        setIsActive(true);
+        // Pre-fill manualDuration if provided (e.g. from conditioning timer handoff)
+        if (initialData.prefillDuration !== undefined) {
+            setManualDuration(String(Math.round(initialData.prefillDuration / 60)));
+            setIsDurationLocked(true);
+        } else {
+            setIsDurationLocked(false);
+        }
+        // In log mode we still set isActive=true so the UI renders, but the timer won't tick
+        setIsActive(initialData.isActive !== undefined ? initialData.isActive : true);
     }, []);
 
     const cancelWorkout = useCallback(() => {
         setIsActive(false);
+        setIsLogMode(false);
+        setIsDurationLocked(false);
         setExercises([]);
         setSecondsElapsed(0);
+        setManualDuration('');
         setGlobalNotes('');
         stopRestTimer();
     }, [stopRestTimer]);
 
     const finishWorkout = useCallback(() => {
         setIsActive(false);
+        setIsLogMode(false);
+        setIsDurationLocked(false);
         setExercises([]);
         setSecondsElapsed(0);
+        setManualDuration('');
         setGlobalNotes('');
     }, []);
 
@@ -162,6 +185,8 @@ export function WorkoutProvider({ children }) {
         isActive,
         isContextReady,
         setIsActive,
+        isLogMode,
+        isDurationLocked,
         date,
         setDate,
         sessionType,
@@ -173,6 +198,9 @@ export function WorkoutProvider({ children }) {
         setGlobalNotes,
         secondsElapsed,
         setSecondsElapsed,
+        manualDuration,
+        setManualDuration,
+        isDurationLocked,
         restTimer,
         startRestTimer,
         stopRestTimer,
@@ -183,8 +211,8 @@ export function WorkoutProvider({ children }) {
         cancelWorkout,
         finishWorkout
     }), [
-        isActive, isContextReady, date, sessionType, exercises, globalNotes,
-        secondsElapsed, restTimer, isRestTimerExpanded,
+        isActive, isContextReady, isLogMode, isDurationLocked, date, sessionType, exercises, globalNotes,
+        secondsElapsed, manualDuration, restTimer, isRestTimerExpanded,
         updateExercises, addExercise, startRestTimer,
         stopRestTimer, addRestTime, startWorkout,
         cancelWorkout, finishWorkout

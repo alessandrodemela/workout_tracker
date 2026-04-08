@@ -45,6 +45,20 @@ export default function ExerciseDatabase() {
     const { data: histData, error: histError } = useSWR(`${API_URL}/workout-history`, fetcher);
     const exercises = exData?.full_list || [];
     const workouts = histData?.workouts || [];
+    const functional = histData?.functional || [];
+
+    const loggedExercises = useMemo(() => {
+        const set = new Set(workouts.map(w => w.Exercise));
+        // Also include exercises from functional circuit splits
+        functional.forEach(f => {
+            if (f.Splits && Array.isArray(f.Splits)) {
+                f.Splits.forEach(split => {
+                    if (split.title) set.add(split.title);
+                });
+            }
+        });
+        return set;
+    }, [workouts, functional]);
 
     if (exError || histError) return (
         <div className="p-6 text-brand-500 font-bold text-center">
@@ -69,8 +83,6 @@ export default function ExerciseDatabase() {
 
     const categories = ['All', ...Array.from(new Set(exercises.map(e => e.Target_Muscle).filter(Boolean)))];
     const equipmentOptions = ['All', ...Array.from(new Set(exercises.map(e => e.Equipment).filter(Boolean)))];
-
-    const loggedExercises = useMemo(() => new Set(workouts.map(w => w.Exercise)), [workouts]);
 
     const grouped = useMemo(() => {
         let filtered = exercises;
@@ -379,23 +391,34 @@ export default function ExerciseDatabase() {
                                     <div className="flex flex-col gap-6">
                                         {exerciseHistoryData.history.slice().reverse().map((log, i) => {
                                             const repsArr = (log.Reps || '').toString().split(',').filter(r => r.trim() !== '');
+                                            const isFunctional = log.Type === 'Functional';
+
                                             return (
                                                 <div key={i} className="flex flex-col gap-3 group">
                                                     <div className="flex items-center gap-3">
                                                         <span className="text-[11px] font-black text-[#606060] uppercase tracking-widest">
                                                             {new Date(log.Date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                                                         </span>
+                                                        <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-tighter ${isFunctional ? 'bg-blue-500/10 text-blue-400 border border-blue-500/20' : 'bg-brand-500/10 text-brand-500 border border-brand-500/20'}`}>
+                                                            {isFunctional ? log.session_type || 'Circuit' : 'Weightlifting'}
+                                                        </div>
                                                         <div className="flex-1 h-[1px] bg-[#171717] group-hover:bg-[#262626] transition-colors"></div>
                                                     </div>
                                                     <div className="flex flex-wrap gap-2.5">
-                                                        {repsArr.map((rep, idx) => (
-                                                            <div key={idx} className="bg-[#111111] border border-[#171717] hover:border-[#262626] py-2.5 px-5 rounded-2xl flex items-center gap-1.5 transition-all hover:scale-105">
-                                                                <span className="text-sm font-black text-white">{parseFloat(log.Kg || 0).toFixed(2)}</span>
-                                                                <span className="text-[10px] font-bold text-[#404040]">kg</span>
-                                                                <span className="text-[10px] font-black text-[#404040]">×</span>
-                                                                <span className="text-sm font-black text-white">{rep.trim()}</span>
+                                                        {isFunctional ? (
+                                                            <div className="bg-[#111111] border border-[#171717] hover:border-blue-500/30 py-2.5 px-5 rounded-2xl flex items-center gap-1.5 transition-all hover:scale-105">
+                                                                <span className="text-sm font-black text-white">Completed in Circuit</span>
                                                             </div>
-                                                        ))}
+                                                        ) : (
+                                                            repsArr.map((rep, idx) => (
+                                                                <div key={idx} className="bg-[#111111] border border-[#171717] hover:border-[#262626] py-2.5 px-5 rounded-2xl flex items-center gap-1.5 transition-all hover:scale-105">
+                                                                    <span className="text-sm font-black text-white">{parseFloat(log.Kg || 0).toFixed(2)}</span>
+                                                                    <span className="text-[10px] font-bold text-[#404040]">kg</span>
+                                                                    <span className="text-[10px] font-black text-[#404040]">×</span>
+                                                                    <span className="text-sm font-black text-white">{rep.trim()}</span>
+                                                                </div>
+                                                            ))
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
