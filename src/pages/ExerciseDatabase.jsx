@@ -139,34 +139,39 @@ export default function ExerciseDatabase() {
             </div>
 
             {isAdding && (
-                <div className="card-glass flex flex-col gap-6 animate-slide-up border-brand-500/30">
-                    <div className="flex justify-between items-center">
-                        <h2 className="text-lg font-bold">New Exercise</h2>
-                        <button onClick={() => setIsAdding(false)} className="text-[#A3A3A3] text-xs font-bold uppercase tracking-widest">Cancel</button>
-                    </div>
-
-                    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                        <input className="input-field" name="Exercise_Name" value={formData.Exercise_Name} onChange={handleChange} required placeholder="Movement Name (e.g. Incline DB Press)" />
-                        <div className="grid grid-cols-2 gap-3">
-                            <select className="input-field appearance-none" name="Target_Muscle" value={formData.Target_Muscle} onChange={handleChange}>
-                                <option value="">Select Muscle...</option>
-                                {Object.keys(MUSCLE_TO_AREA_MAP).map(m => <option key={m} value={m}>{m}</option>)}
-                            </select>
-                            <input className="input-field opacity-50 cursor-not-allowed" name="Target_Area" value={formData.Target_Area} readOnly placeholder="Area (Auto)" />
+                <div className="fixed inset-0 z-50 flex items-end justify-center transition-all">
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm transition-opacity" onClick={() => setIsAdding(false)}></div>
+                    <div className="relative bg-[#0A0A0A] border border-[#171717] rounded-t-[3rem] w-full max-w-xl p-8 flex flex-col animate-slide-up shadow-2xl">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-2xl font-black text-white px-2">New Exercise</h2>
+                            <button onClick={() => setIsAdding(false)} className="p-3 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all">
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                        <select className="input-field appearance-none" name="Equipment" value={formData.Equipment} onChange={handleChange}>
-                            <option value="">Equipment...</option>
-                            <option value="Barbell">Barbell</option>
-                            <option value="Dumbbells">Dumbbells</option>
-                            <option value="Machine">Machine</option>
-                            <option value="Cable">Cable</option>
-                            <option value="Bodyweight">Bodyweight</option>
-                            <option value="TRX">TRX</option>
-                            <option value="Kettlebell">Kettlebell</option>
-                            <option value="Other">Other</option>
-                        </select>
-                        <PrimaryButton type="submit" loading={isSaving}>Register Exercise</PrimaryButton>
-                    </form>
+
+                        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                            <input className="input-field py-4" name="Exercise_Name" value={formData.Exercise_Name} onChange={handleChange} required placeholder="Movement Name (e.g. Incline DB Press)" />
+                            <div className="grid grid-cols-2 gap-3">
+                                <select className="input-field appearance-none py-4" name="Target_Muscle" value={formData.Target_Muscle} onChange={handleChange}>
+                                    <option value="">Select Muscle...</option>
+                                    {Object.keys(MUSCLE_TO_AREA_MAP).map(m => <option key={m} value={m}>{m}</option>)}
+                                </select>
+                                <input className="input-field opacity-50 cursor-not-allowed py-4" name="Target_Area" value={formData.Target_Area} readOnly placeholder="Area (Auto)" />
+                            </div>
+                            <select className="input-field appearance-none py-4" name="Equipment" value={formData.Equipment} onChange={handleChange}>
+                                <option value="">Equipment...</option>
+                                <option value="Barbell">Barbell</option>
+                                <option value="Dumbbells">Dumbbells</option>
+                                <option value="Machine">Machine</option>
+                                <option value="Cable">Cable</option>
+                                <option value="Bodyweight">Bodyweight</option>
+                                <option value="TRX">TRX</option>
+                                <option value="Kettlebell">Kettlebell</option>
+                                <option value="Other">Other</option>
+                            </select>
+                            <PrimaryButton className="mt-4 py-4" type="submit" loading={isSaving}>Register Exercise</PrimaryButton>
+                        </form>
+                    </div>
                 </div>
             )}
 
