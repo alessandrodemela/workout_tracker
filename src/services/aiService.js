@@ -31,14 +31,14 @@ export async function buildTrainingSummary(userId) {
         .eq('user_id', userId)
         .gte('date', dateString)
         .order('date', { ascending: false });
-        
+
     if (fErr) throw fErr;
 
     // 1. last_workout_days_ago
     let lastWorkoutDaysAgo = -1;
     let allDates = [...(workouts || []), ...(functional || [])].map(l => l.date);
     allDates.sort((a, b) => new Date(b) - new Date(a));
-    
+
     if (allDates.length > 0) {
         const lastDate = new Date(allDates[0]);
         const today = new Date();
@@ -122,11 +122,11 @@ export async function generateWorkoutMock(profile, summary) {
 
     const preferredSplit = profile.preferred_split?.toLowerCase() || 'full body';
     const recStatus = summary.recovery_status; // LOW, MODERATE, HIGH
-    
+
     // We fetch some exercises to pick from
     const { data: catalog, error } = await supabase.schema('workout_tracker').from('exercises').select('name, target_muscle');
     if (error) throw error;
-    
+
     // Group exercises by muscle
     const muscleGroups = {
         chest: [], back: [], legs: [], shoulders: [], arms: [], core: [], other: []
@@ -150,7 +150,7 @@ export async function generateWorkoutMock(profile, summary) {
     if (recStatus === 'LOW') {
         rationale = "Your recovery state is LOW based on recent heavy days. We're keeping the intensity light, focusing on active recovery or isolation work.";
         Session_Type = "Active Recovery";
-        selectedMuscles = ['arms', 'core', 'shoulders']; 
+        selectedMuscles = ['arms', 'core', 'shoulders'];
     } else if (recStatus === 'HIGH') {
         rationale = "You are well-rested (Recovery: HIGH). Time for a heavy compound-focused session to maximize stimulus.";
         Session_Type = "Heavy Compound";
@@ -179,7 +179,7 @@ export async function generateWorkoutMock(profile, summary) {
     }
 
     const suggestedExercises = [];
-    
+
     // Pick 1-2 exercises per selected muscle
     selectedMuscles.forEach(m => {
         const exList = muscleGroups[m];
@@ -195,7 +195,7 @@ export async function generateWorkoutMock(profile, summary) {
                 rpe: recStatus === 'LOW' ? 6 : (recStatus === 'HIGH' ? 8.5 : 7.5),
                 notes: recStatus === 'LOW' ? "Keep it light and controlled." : ""
             });
-            
+
             if (exList.length > 1 && recStatus !== 'LOW') {
                 const index2 = (dayOfYear + 1) % exList.length;
                 if (index1 !== index2) {
@@ -224,4 +224,93 @@ export async function generateWorkoutMock(profile, summary) {
         rationale: rationale,
         exercises: finalExercises
     };
+}
+
+/**
+ * generateClaudePrompt
+ * Aggregates all context into a single prompt for the user to copy/paste into Claude.
+ */
+export async function generateClaudePrompt(profile, summary, userId) {
+    if (!profile || !userId) return "Error: Profile and User ID required.";
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'PENDING_CONFIG';
+
+    // Fetch last 4 weeks of logs for context
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
+
+    const { data: logs } = await supabase.from('workout_logs')
+        .select('date, session_type, exercise, sets, reps, kg, rpe')
+        .eq('user_id', userId)
+        .gte('date', dateStr)
+        .order('date', { ascending: false });
+
+    // Format logs for readability in the prompt
+    const logsText = logs && logs.length > 0
+        ? logs.map(l => `- ${l.date} [${l.session_type}]: ${l.exercise} (${l.sets}x${l.reps} @ ${l.kg}kg, RPE:${l.rpe})`).join('\n')
+        : "No recent workout logs found.";
+
+    const prompt = `
+[SYSTEM INSTRUCTIONS]
+Act as an expert Strength & Conditioning AI Coach. 
+Your task is to generate a new workout routine that will be structured into a Header (routine_templates) and Rows (routine_exercises) for the project "${projectId}".
+
+[CONTEXT]
+User UUID: ${userId}
+Project ID: ${projectId}
+Schema: workout_tracker
+
+[ATHLETE PROFILE]
+- Level: ${profile.experience_level || 'Not specified'}
+- Goal: ${profile.goal || 'Not specified'}
+- Preferred Split: ${profile.preferred_split || 'Not specified'}
+- Training Days/Week: ${profile.training_days_per_week || 'Not specified'}
+- Additional Info: ${profile.additional_info || 'None'}
+- Custom Notes/Concepts: ${profile.notes || 'None'}
+
+[TRAINING DATA (Last 30 Days)]
+- Frequency: ${summary.weekly_frequency} sessions/week
+- Avg RPE: ${summary.avg_rpe}
+- Recovery Status: ${summary.recovery_status}
+- Last Muscles Worked: ${summary.last_muscles_worked?.join(', ') || 'None'}
+
+[HISTORY LOGS]
+${logsText}
+
+[DATABASE TARGET: routine_templates & routine_exercises]
+You are creating entries that will be split and linked by Exercise ID:
+- routine_templates: Stores the session metadata (mesocycle, split, block).
+- routine_exercises: Stores the reps, sets, and RPE, linked to a Master Exercise Record.
+
+[MISSION]
+Design the perfect NEXT workout session. Respond ONLY with a raw JSON object string.
+
+[OUTPUT FORMAT]
+{
+  "session_type": "Name of the Split",
+  "mesocycle": "Name of the Mesocycle",
+  "block_number": 1,
+  "exercises": [
+    {
+      "exercise_name": "Exercise Name",
+      "sets": 3,
+      "reps": "8-10",
+      "rpe": 8,
+      "notes": "Coach instructions..."
+    }
+  ]
+}
+
+CRITICAL: Return ONLY JSON. No explanations, no markdown code blocks. Just the raw { ... } object.
+If approved proceed to save routine in Supabase DB. 
+Talk like caveman.
+Do not activate skill for now
+
+TESTING: Provide me feedback on this prompt after finishing the save routine in Supabase DB.
+
+
+`;
+
+    return prompt;
 }

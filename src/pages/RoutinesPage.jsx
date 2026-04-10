@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import useSWR from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library } from 'lucide-react';
+import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library, Play, Dumbbell, Sparkles, Copy, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { fetcher, saveUserProfile } from '../api';
-import { buildTrainingSummary, generateWorkoutMock } from '../services/aiService';
+import { fetcher, saveUserProfile, saveTemplatesFromAI } from '../api';
+import { buildTrainingSummary, generateWorkoutMock, generateClaudePrompt } from '../services/aiService';
 import { useNavigate } from 'react-router-dom';
 
 const MOCK_AVATAR = (email) => email ? email.substring(0, 2).toUpperCase() : 'ST';
@@ -34,28 +34,62 @@ export default function RoutinesPage() {
         { revalidateOnFocus: false }
     );
 
+    const { data: historyData } = useSWR(
+        user ? '/workout-history' : null,
+        fetcher,
+        { revalidateOnFocus: false }
+    );
+
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isPromptModalOpen, setIsPromptModalOpen] = useState(false);
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [generatedPrompt, setGeneratedPrompt] = useState('');
+    const [importJson, setImportJson] = useState('');
+    const [isCopying, setIsCopying] = useState(false);
+
     const hasProfile = profile && profile.goal;
 
     const groupedTemplates = React.useMemo(() => {
         if (!templatesResp?.templates) return [];
-        
         const groups = {};
         templatesResp.templates.forEach(t => {
-            const key = `${t.Mesocycle} - ${t.Split}`;
+            // Handle both legacy (flat) and new (joined) table structures
+            const mName = t.mesocycle || t.Mesocycle || 'Unknown';
+            const sName = t.split || t.Split || 'Routine';
+            const wNum = t.block_number || t.Block_Number || 1;
+            const rId = t.routine_id || t.Routine_ID;
+
+            const key = `B${wNum}_${mName}_${sName}_${rId}`;
             if (!groups[key]) {
+                // Check completion in history (e.g. done in the last 7 days)
+                const isDone = historyData?.workouts?.some(h =>
+                    h.session_type === sName &&
+                    h.mesocycle === mName &&
+                    (new Date() - new Date(h.date)) / (1000 * 60 * 60 * 24) < 7
+                );
+
                 groups[key] = {
                     id: key,
-                    mesocycle: t.Mesocycle,
-                    split: t.Split,
-                    exercises: []
+                    routineId: rId,
+                    block: wNum,
+                    mesocycle: mName,
+                    split: sName,
+                    exercises: [],
+                    isCompleted: isDone
                 };
             }
             groups[key].exercises.push(t);
         });
-        
-        return Object.values(groups);
-    }, [templatesResp]);
+
+        // Find the first routine that is NOT completed to be the highlighted one
+        const allRoutines = Object.values(groups).sort((a, b) => (a.block - b.block) || a.mesocycle.localeCompare(b.mesocycle));
+        const firstPendingIdx = allRoutines.findIndex(r => !r.isCompleted);
+
+        return allRoutines.map((r, i) => ({
+            ...r,
+            isRecommended: i === (firstPendingIdx === -1 ? 0 : firstPendingIdx)
+        }));
+    }, [templatesResp, historyData]);
 
     console.log('🔄 RoutinesPage render', { isProfileLoading, isSummaryLoading, hasProfile, templatesCount: groupedTemplates.length });
 
@@ -69,22 +103,23 @@ export default function RoutinesPage() {
 
     const handleStartStoredRoutine = (group) => {
         const prefillExercises = group.exercises.map(ex => ({
-            name: ex.Exercise_Name,
-            sets: Array.from({ length: ex.Sets || 3 }, () => ({
+            name: ex.exercise_name || ex.Exercise_Name,
+            sets: Array.from({ length: (ex.sets || ex.Sets) || 3 }, () => ({
                 kg: '',
-                reps: ex.Reps,
-                rpe: ex.RPE,
+                reps: ex.reps || ex.Reps,
+                rpe: ex.rpe || ex.RPE,
                 completed: false
             }))
         }));
 
-        navigate('/workout', { 
-            state: { 
+        navigate('/workout', {
+            state: {
+                routineId: group.routineId,
                 sessionType: group.split,
                 mesocycle: group.mesocycle,
                 prefillExercises: prefillExercises,
                 prefillNotes: `Meso: ${group.mesocycle} | Split: ${group.split}`
-            } 
+            }
         });
     };
 
@@ -92,6 +127,38 @@ export default function RoutinesPage() {
         setIsModalOpen(false);
         await saveUserProfile(user.id, formData);
         mutateProfile();
+    };
+
+    const handleGeneratePrompt = async () => {
+        const prompt = await generateClaudePrompt(profile, summary, user.id);
+        setGeneratedPrompt(prompt);
+        setIsPromptModalOpen(true);
+    };
+
+    const handleCopyPrompt = () => {
+        navigator.clipboard.writeText(generatedPrompt);
+        setIsCopying(true);
+        setTimeout(() => setIsCopying(false), 2000);
+    };
+
+    const handleImportRoutine = async () => {
+        try {
+            const data = JSON.parse(importJson);
+            await saveTemplatesFromAI(user.id, data);
+            
+            // Immediate cache invalidation
+            mutate('/templates');
+            mutateProfile();
+            
+            setIsImportModalOpen(false);
+            setImportJson('');
+            
+            // Brief timeout before reload to ensure SWR sees the change (optional but safe)
+            setTimeout(() => window.location.reload(), 500);
+        } catch (err) {
+            console.error('Import error:', err);
+            alert('Invalid JSON format or database error. Please check Claude\'s output.');
+        }
     };
 
     if (isProfileLoading || isSummaryLoading) {
@@ -124,7 +191,7 @@ export default function RoutinesPage() {
                     animate={{ opacity: 1, y: 0 }}
                     className="flex flex-col gap-6"
                 >
-                    {/* Training Status */}
+                    {/* Training Status
                     {summary && (
                         <div className="grid grid-cols-2 gap-3">
                             <div className="bg-[#0A0A0A] border border-[#171717] rounded-3xl p-4 relative overflow-hidden flex flex-col justify-between">
@@ -149,90 +216,109 @@ export default function RoutinesPage() {
                                 </span>
                             </div>
                         </div>
-                    )}
+                    )} */}
 
-                    {/* Today's Workout */}
-                    <div className="bg-[#0A0A0A] border border-brand-500/20 rounded-3xl p-5 relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-brand-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
-                        <div className="flex items-center justify-between mb-4 relative z-10">
-                            <div>
-                                <h3 className="text-lg font-black text-white uppercase tracking-tighter">Prescription</h3>
-                                {!isGenerating && mockWorkout && (
-                                    <span className="text-xs font-bold text-brand-500 uppercase tracking-widest flex items-center gap-1">
-                                        <Target className="w-3 h-3" /> {mockWorkout.session_type}
-                                    </span>
-                                )}
+                    {/* Routine Hero Section (Horizontal Slider) */}
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-2">
+                                <Play className="w-4 h-4 text-brand-500" />
+                                <span className="text-sm font-bold text-[#A3A3A3] uppercase tracking-widest">Active Programs</span>
                             </div>
-                            {isGenerating ? (
-                                <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 2, ease: 'linear' }}>
-                                    <Brain className="w-5 h-5 text-brand-500 opacity-50" />
-                                </motion.div>
-                            ) : null}
                         </div>
 
-                        {/* Rationale */}
-                        {!isGenerating && mockWorkout && (
-                            <div className="mb-5 bg-black/40 rounded-2xl p-3 border border-[#171717]/50 relative z-10">
-                                <p className="text-xs text-[#A3A3A3] leading-relaxed italic border-l-2 border-brand-500 pl-3">
-                                    "{mockWorkout.rationale}"
-                                </p>
-                            </div>
-                        )}
+                        <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
+                            {groupedTemplates.map((group, idx) => (
+                                <motion.button
+                                    key={group.id}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={() => handleStartStoredRoutine(group)}
+                                    className={`snap-center flex-shrink-0 w-72 h-44 rounded-[2.5rem] p-6 text-left flex flex-col justify-between relative overflow-hidden group transition-all shadow-xl ${group.isRecommended
+                                            ? 'bg-brand-500 text-black shadow-brand-900/20'
+                                            : 'bg-[#0A0A0A] border border-[#171717] text-white hover:border-brand-500/30'
+                                        } ${group.isCompleted ? 'opacity-60 grayscale-[0.5]' : ''}`}
+                                >
+                                    {/* Background Icon */}
+                                    <div className="absolute -top-4 -right-4 transition-transform group-hover:scale-110">
+                                        {group.isRecommended ? (
+                                            <Play className="w-32 h-32 text-black opacity-10 fill-black" />
+                                        ) : (
+                                            <Dumbbell className="w-32 h-32 text-white opacity-[0.03]" />
+                                        )}
+                                    </div>
 
-                        {/* Exercises */}
-                        <div className="flex flex-col gap-2 mb-6 relative z-10">
-                            {isGenerating ? (
-                                <div className="space-y-2 opacity-30 animate-pulse">
-                                    {[1, 2, 3].map(i => (
-                                        <div key={i} className="h-12 bg-[#171717] rounded-2xl w-full"></div>
-                                    ))}
-                                </div>
-                            ) : mockWorkout?.exercises && mockWorkout.exercises.map((ex, idx) => (
-                                <div key={idx} className="flex items-center justify-between p-3 rounded-2xl bg-[#171717]/50 border border-[#262626]/30">
-                                    <div className="flex flex-col">
-                                        <span className="text-sm font-bold text-white tracking-wide">{ex.exercise_name}</span>
-                                        {ex.notes && <span className="text-[9px] text-[#A3A3A3] tracking-wider mt-0.5">{ex.notes}</span>}
+                                    <div className="relative z-10 flex flex-col h-full justify-between">
+                                        <div className="flex flex-col">
+                                            <div className="flex items-center justify-between">
+                                                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${group.isRecommended ? 'text-black/60' : 'text-brand-500'
+                                                    }`}>
+                                                    {group.mesocycle} • BLOCK {group.block}
+                                                </span>
+                                                {group.isCompleted && (
+                                                    <CheckCircle className={`w-4 h-4 ${group.isRecommended ? 'text-black/60' : 'text-brand-500'}`} />
+                                                )}
+                                            </div>
+                                            <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mt-1 group-hover:translate-x-1 transition-transform">
+                                                {group.split}
+                                            </h3>
+                                        </div>
+
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex flex-col">
+                                                <span className={`text-[10px] font-bold uppercase ${idx === 0 ? 'text-black/60' : 'text-[#525252]'
+                                                    }`}>
+                                                    {group.exercises.length} Movements
+                                                </span>
+                                            </div>
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${idx === 0 ? 'bg-black/10' : 'bg-brand-500/10'
+                                                }`}>
+                                                <Play className={`w-5 h-5 ${idx === 0 ? 'fill-black text-black' : 'fill-brand-500 text-brand-500'}`} />
+                                            </div>
+                                        </div>
                                     </div>
-                                    <div className="text-right flex flex-col">
-                                        <span className="text-xs font-black text-brand-500">{ex.sets} <span className="text-[#525252]">x</span> {ex.reps}</span>
-                                        <span className="text-[10px] font-bold text-[#A3A3A3]">RPE {ex.rpe}</span>
-                                    </div>
-                                </div>
+                                </motion.button>
                             ))}
+
+                            {/* Add New Logic or Placeholder if needed */}
+                            {groupedTemplates.length === 0 && (
+                                <div className="w-full py-12 text-center text-[#525252] font-black uppercase tracking-widest text-[10px] bg-[#0A0A0A] border-2 border-dashed border-[#171717] rounded-3xl">
+                                    No routines created yet
+                                </div>
+                            )}
                         </div>
+                    </div>
+
+                    {/* AI Hub Actions */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={handleGeneratePrompt}
+                            className="bg-[#0A0A0A] border border-[#171717] rounded-3xl p-5 flex flex-col items-start gap-4 hover:border-brand-500/30 transition-all group active:scale-[0.98]"
+                        >
+                            <div className="w-10 h-10 rounded-full bg-brand-500/10 flex items-center justify-center transition-colors group-hover:bg-brand-500/20">
+                                <Sparkles className="w-5 h-5 text-brand-500" />
+                            </div>
+                            <div className="flex flex-col items-start">
+                                <span className="text-sm font-black text-white uppercase tracking-tight">Get AI Prompt</span>
+                                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-widest mt-0.5">Context Generator</span>
+                            </div>
+                        </button>
 
                         <button
-                            onClick={() => {
-                                // Map mock workout format to ActiveWorkout's expected prefill format
-                                const prefillExercises = mockWorkout.exercises.map(ex => ({
-                                    name: ex.exercise_name,
-                                    sets: Array.from({ length: ex.sets }, () => ({
-                                        kg: '',
-                                        reps: ex.reps,
-                                        rpe: ex.rpe,
-                                        completed: false
-                                    }))
-                                }));
-
-                                navigate('/workout', { 
-                                    state: { 
-                                        sessionType: mockWorkout.session_type,
-                                        prefillExercises: prefillExercises,
-                                        prefillNotes: `Goal: ${profile.goal}\nRationale: ${mockWorkout.rationale}`
-                                    } 
-                                });
-                            }}
-                            className="relative w-full h-14 bg-brand-500 rounded-2xl flex items-center justify-center overflow-hidden group active:scale-[0.98] transition-transform z-10"
+                            onClick={() => setIsImportModalOpen(true)}
+                            className="bg-[#0A0A0A] border border-[#171717] rounded-3xl p-5 flex flex-col items-start gap-4 hover:border-brand-500/30 transition-all group active:scale-[0.98]"
                         >
-                            <span className="relative z-10 text-black font-black uppercase tracking-[0.2em] text-sm flex items-center gap-2">
-                                Start Session <Flame className="w-4 h-4" />
-                            </span>
+                            <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center transition-colors group-hover:bg-brand-500/20">
+                                <ClipboardCheck className="w-5 h-5 text-[#A3A3A3] group-hover:text-brand-500" />
+                            </div>
+                            <div className="flex flex-col items-start">
+                                <span className="text-sm font-black text-white uppercase tracking-tight">Import Routine</span>
+                                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-widest mt-0.5">Paste Claude JSON</span>
+                            </div>
                         </button>
                     </div>
 
-                    {/* Saved Routines Library */}
-                    {groupedTemplates.length > 0 && (
+                    {/* Saved Library (Vertical List if many, but we'll focus on the Hero) */}
+                    {groupedTemplates.length > 3 && (
                         <div className="flex flex-col gap-4 mt-2">
                             <div className="flex items-center justify-between px-2">
                                 <div className="flex items-center gap-2">
@@ -246,8 +332,8 @@ export default function RoutinesPage() {
 
                             <div className="grid grid-cols-1 gap-3">
                                 {groupedTemplates.map((group) => (
-                                    <motion.div 
-                                        key={group.id} 
+                                    <motion.div
+                                        key={group.id}
                                         whileTap={{ scale: 0.98 }}
                                         onClick={() => handleStartStoredRoutine(group)}
                                         className="bg-[#0A0A0A] border border-[#171717] rounded-3xl p-5 hover:border-brand-500/30 transition-all cursor-pointer group relative overflow-hidden"
@@ -255,7 +341,7 @@ export default function RoutinesPage() {
                                         <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-10 transition-opacity">
                                             <Trophy className="w-12 h-12 text-white" />
                                         </div>
-                                        
+
                                         <div className="flex items-center justify-between mb-3 relative z-10">
                                             <div>
                                                 <h4 className="text-lg font-black text-white uppercase tracking-tighter group-hover:text-brand-500 transition-colors">
@@ -269,7 +355,7 @@ export default function RoutinesPage() {
                                                 <Flame className="w-4 h-4 text-[#404040] group-hover:text-black" />
                                             </div>
                                         </div>
-                                        
+
                                         <div className="flex flex-wrap gap-x-2 gap-y-1 relative z-10">
                                             {group.exercises.slice(0, 5).map((ex, i) => (
                                                 <span key={i} className="text-[10px] font-bold text-[#525252] flex items-center">
@@ -302,6 +388,22 @@ export default function RoutinesPage() {
                 onClose={() => setIsModalOpen(false)}
                 onSubmit={handleProfileSubmit}
                 initialData={profile}
+            />
+
+            <PromptDisplayModal
+                isOpen={isPromptModalOpen}
+                onClose={() => setIsPromptModalOpen(false)}
+                prompt={generatedPrompt}
+                onCopy={handleCopyPrompt}
+                isCopying={isCopying}
+            />
+
+            <ImportRoutineModal
+                isOpen={isImportModalOpen}
+                onClose={() => setIsImportModalOpen(false)}
+                value={importJson}
+                onChange={setImportJson}
+                onImport={handleImportRoutine}
             />
         </div>
     );
@@ -342,7 +444,9 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
         experience_level: 'Intermediate',
         training_days_per_week: 4,
         preferred_split: 'Upper/Lower',
-        equipment: []
+        equipment: [],
+        additional_info: '',
+        notes: ''
     });
 
     useEffect(() => {
@@ -352,7 +456,9 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
                 experience_level: initialData.experience_level,
                 training_days_per_week: initialData.training_days_per_week,
                 preferred_split: initialData.preferred_split,
-                equipment: initialData.equipment || []
+                equipment: initialData.equipment || [],
+                additional_info: initialData.additional_info || '',
+                notes: initialData.notes || ''
             });
         }
     }, [initialData, isOpen]);
@@ -448,6 +554,28 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
                                 </div>
                             </div>
 
+                            {/* Additional Info */}
+                            <div>
+                                <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-widest mb-2">Anything Else? (e.g. Injury, Life Stress)</label>
+                                <textarea
+                                    value={formData.additional_info}
+                                    onChange={(e) => setFormData({ ...formData, additional_info: e.target.value })}
+                                    placeholder="I have a slight shoulder niggle..."
+                                    className="w-full bg-[#171717] border border-[#262626] rounded-2xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-brand-500 h-20 resize-none"
+                                />
+                            </div>
+
+                            {/* Notes / Concepts */}
+                            <div>
+                                <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-widest mb-2">Training Concepts / Philsophy</label>
+                                <textarea
+                                    value={formData.notes}
+                                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                    placeholder="I want to integrate cluster sets or heavy singles..."
+                                    className="w-full bg-[#171717] border border-[#262626] rounded-2xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-brand-500 h-24 resize-none"
+                                />
+                            </div>
+
                             <button
                                 type="submit"
                                 className="w-full mt-4 h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-sm rounded-2xl flex items-center justify-center hover:bg-brand-500 hover:text-black transition-colors"
@@ -455,6 +583,84 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
                                 Save Profile
                             </button>
                         </form>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+    );
+}
+
+function PromptDisplayModal({ isOpen, onClose, prompt, onCopy, isCopying }) {
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        className="w-full max-w-2xl bg-[#0A0A0A] border border-[#171717] rounded-3xl overflow-hidden flex flex-col relative z-10 max-h-[80vh]"
+                    >
+                        <div className="p-6 border-b border-[#171717] flex items-center justify-between">
+                            <h3 className="text-xl font-black uppercase tracking-tighter">Copy Prompt</h3>
+                            <button onClick={onClose} className="text-[#A3A3A3] hover:text-white"><X className="w-6 h-6" /></button>
+                        </div>
+                        <div className="p-6 overflow-y-auto bg-black flex-1">
+                            <pre className="text-[10px] text-[#A3A3A3] leading-relaxed whitespace-pre-wrap font-mono">
+                                {prompt}
+                            </pre>
+                        </div>
+                        <div className="p-6 border-t border-[#171717]">
+                            <button
+                                onClick={onCopy}
+                                className="w-full h-14 bg-brand-500 text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2"
+                            >
+                                {isCopying ? <ClipboardCheck className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
+                                {isCopying ? 'Copied!' : 'Copy for Claude'}
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+    );
+}
+
+function ImportRoutineModal({ isOpen, onClose, value, onChange, onImport }) {
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        className="w-full max-w-lg bg-[#0A0A0A] border border-[#171717] rounded-3xl overflow-hidden flex flex-col relative z-10"
+                    >
+                        <div className="p-6 border-b border-[#171717] flex items-center justify-between">
+                            <h3 className="text-xl font-black uppercase tracking-tighter">Import Routine</h3>
+                            <button onClick={onClose} className="text-[#A3A3A3] hover:text-white"><X className="w-6 h-6" /></button>
+                        </div>
+                        <div className="p-6 space-y-4">
+                            <p className="text-xs text-[#A3A3A3] leading-relaxed">
+                                Paste the raw JSON output from Claude here. Ensure it matches the requested format.
+                            </p>
+                            <textarea
+                                value={value}
+                                onChange={(e) => onChange(e.target.value)}
+                                placeholder='{ "session_type": "...", "exercises": [...] }'
+                                className="w-full h-64 bg-black border border-[#171717] rounded-2xl p-4 text-xs font-mono text-brand-500 focus:outline-none focus:border-brand-500 resize-none"
+                            />
+                            <button
+                                onClick={onImport}
+                                disabled={!value}
+                                className="w-full h-14 bg-white text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center disabled:opacity-50"
+                            >
+                                Add to Library
+                            </button>
+                        </div>
                     </motion.div>
                 </div>
             )}

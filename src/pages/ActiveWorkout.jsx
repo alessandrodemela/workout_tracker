@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useSWR, { mutate } from 'swr';
 import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save, ChevronRight } from 'lucide-react';
-import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession } from '../api';
+import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession, markRoutineInactive } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
 import RestTimer from '../components/RestTimer';
@@ -218,6 +218,8 @@ export default function ActiveWorkout() {
     const isFunctionalSession = FUNCTIONAL_TYPES.includes(sessionType);
 
     const handleFinishWorkout = async () => {
+        const routineId = location.state?.routineId;
+
         if (exercises.length === 0 && !isFunctionalSession) {
             return setAlertConfig({ 
                 isOpen: true, 
@@ -248,6 +250,7 @@ export default function ActiveWorkout() {
                 if (validSets.length > 0) {
                     const maxKg = Math.max(...validSets.map(s => parseFloat(s.kg) || 0));
                     const weights = validSets.map(s => s.kg || '0').join(',');
+                    
                     validRows.push({
                         Exercise: ex.name,
                         Kg: maxKg,
@@ -287,6 +290,15 @@ export default function ActiveWorkout() {
                 const durationNote = `[[D:${durationSeconds}]]`;
                 const finalNotes = globalNotes ? `${globalNotes}\n${durationNote}` : durationNote;
                 await saveWorkoutSession({ Date: date, Session_Type: sessionType, Mesocycle: '', Notes: finalNotes, Exercises: validRows }, user.id);
+            }
+            
+            // If started from a routine, mark it as inactive
+            if (routineId) {
+                try {
+                    await markRoutineInactive(routineId);
+                } catch (e) {
+                    console.error('Failed to mark routine inactive:', e);
+                }
             }
             
             // Critical UX Fix: Invalidate history cache and show success briefly

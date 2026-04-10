@@ -113,30 +113,57 @@ export const getExerciseHistory = async (exerciseName) => {
 };
 
 export const getTemplates = async () => {
-    const { data, error } = await supabase
-        .from('workout_templates')
-        .select('*')
-        .order('id', { ascending: true });
-    
-    if (error) {
-        if (error.code === 'PGRST116') return { templates: [] }; // Handle no data gracefully
-        throw error;
+    try {
+        console.log('Fetching routines from workout_tracker schema...');
+        
+        // Triple join: routine_templates (workout_tracker) -> routine_exercises (workout_tracker) -> exercises (public)
+        const { data: relational, error: relError } = await supabase
+            .schema('workout_tracker')
+            .from('routine_templates')
+            .select(`
+                *,
+                routine_exercises (
+                    *,
+                    exercises:exercise_id (
+                        name
+                    )
+                )
+            `)
+            .or('is_active.eq.true,is_active.is.null')
+            .order('block_number', { ascending: true });
+
+        if (relError) {
+            // If the schema workout_tracker is NOT accessible, this will log 42501
+            console.error('Error fetching relational templates (42501 CHECK):', relError);
+            return { templates: [] };
+        }
+
+        if (!relational) return { templates: [] };
+
+        const flattened = [];
+        relational.forEach(head => {
+            const sorted = (head.routine_exercises || []).sort((a,b) => (a.exercise_order || 0) - (b.exercise_order || 0));
+            sorted.forEach(ex => {
+                flattened.push({
+                    ID: ex.id,
+                    Routine_ID: head.id,
+                    Block_Number: head.block_number,
+                    Mesocycle: head.mesocycle,
+                    Split: head.split,
+                    Exercise_Name: toTitleCase(ex.exercises?.name || 'Unknown Movement'),
+                    Sets: ex.sets,
+                    Reps: ex.reps,
+                    RPE: ex.rpe,
+                    Notes: ex.notes
+                });
+            });
+        });
+
+        return { templates: flattened };
+    } catch (err) {
+        console.error('Relational fetch crash:', err);
+        return { templates: [] };
     }
-    
-    const formattedTemplates = (data || []).map(t => ({
-        ID: t.id,
-        Week_Number: t.week_number,
-        Mesocycle: t.mesocycle,
-        Split: t.split,
-        Exercise_Number: t.exercise_number,
-        Exercise_Name: toTitleCase(t.exercise_name),
-        Sets: t.sets,
-        Reps: t.reps,
-        RPE: t.rpe,
-        Notes: t.notes
-    }));
-    
-    return { templates: formattedTemplates };
 };
 
 export const getWorkoutHistory = async () => {
@@ -190,13 +217,13 @@ export const getWorkoutHistory = async () => {
 export const saveWorkoutSession = async (session, userId) => {
     const { Date: sessionDate, Session_Type, Mesocycle, Notes, Exercises } = session;
     
-    // Calculate week number (or use current logic)
+    // Calculate block number (maps to new 'block' column)
     const dateObj = new Date(sessionDate);
-    const weekNum = getWeekNumber(dateObj);
+    const blockNum = getWeekNumber(dateObj);
 
     const rows = Exercises.map(ex => ({
         date: sessionDate,
-        week: weekNum,
+        block: blockNum,
         session_type: Session_Type,
         mesocycle: Mesocycle,
         exercise: ex.Exercise,
@@ -219,13 +246,13 @@ export const saveWorkoutSession = async (session, userId) => {
 export const saveFunctionalSession = async (session, userId) => {
     const { Date: sessionDate, Session_Type, Exercise, Notes, Duration_Seconds, Splits } = session || {};
     const dateObj = new Date(sessionDate);
-    const weekNum = getWeekNumber(dateObj);
+    const blockNum = getWeekNumber(dateObj);
 
     const { error } = await supabase
         .from('functional_logs')
         .insert([{
             date: sessionDate,
-            week: weekNum,
+            block: blockNum,
             session_type: Session_Type,
             exercise: (Exercise || 'Functional Circuit'),
             notes: Notes,
@@ -283,6 +310,16 @@ export const bulkAddExercises = async (exercises) => {
     return { status: 'success' };
 };
 
+export const markRoutineInactive = async (routineId) => {
+    const { error } = await supabase
+        .schema('workout_tracker')
+        .from('routine_templates')
+        .update({ is_active: false })
+        .eq('id', routineId);
+    if (error) throw error;
+    return { status: 'success' };
+};
+
 // Profile
 export const getUserProfile = async (userId) => {
     const { data, error } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
@@ -298,6 +335,98 @@ export const saveUserProfile = async (userId, profile) => {
     const { error } = await supabase.from('user_profiles').upsert(payload, { onConflict: 'user_id' });
     if (error) throw error;
     return { status: 'success' };
+};
+
+export const saveTemplatesFromAI = async (userId, aiData) => {
+    const { session_type, mesocycle, exercises: aiExercises, week_number } = aiData;
+    
+    try {
+        console.log('--- STARTING RELATIONAL IMPORT ---', { userId, mesocycle, session_type });
+        
+        // 1. Resolve Exercises (ID Mapping)
+        // Important: check if exercises is in public or workout_tracker (assuming public for master list)
+        const { data: masterEx, error: masterError } = await supabase.from('exercises').select('id, name');
+        if (masterError) console.error('Error fetching master exercises:', masterError);
+        
+        const exMap = {};
+        (masterEx || []).forEach(e => exMap[e.name.toLowerCase()] = e.id);
+
+        const resolvedExercises = [];
+        for (const ex of aiExercises) {
+            let exId = exMap[ex.exercise_name.toLowerCase()];
+            if (!exId) {
+                console.log(`Creating new master exercise: ${ex.exercise_name}`);
+                const { data: newEx, error: createError } = await supabase
+                    .from('exercises')
+                    .insert([{ name: ex.exercise_name, target_muscle: 'Other', target_area: 'Other', equipment: 'Other' }])
+                    .select().maybeSingle();
+                
+                if (!createError && newEx) {
+                    exId = newEx.id;
+                    exMap[ex.exercise_name.toLowerCase()] = exId;
+                }
+            }
+            if (exId) resolvedExercises.push({ ...ex, exercise_id: exId });
+        }
+
+        // 2. Upsert Header (workout_tracker schema)
+        console.log('STEP 2: Upserting routine header in workout_tracker schema...');
+        const { data: header, error: headError } = await supabase
+            .schema('workout_tracker')
+            .from('routine_templates')
+            .upsert({
+                user_id: userId,
+                mesocycle,
+                split: session_type,
+                block_number: week_number || 1,
+                is_active: true
+            }, { onConflict: 'user_id,mesocycle,split,block_number' })
+            .select().single();
+
+        if (headError) {
+            console.error('STEP 2 FAILED (Possible RLS issue on routine_templates?):', headError);
+            throw headError;
+        }
+
+        // 3. Clear old exercises (workout_tracker schema)
+        console.log(`STEP 3: Clearing old exercises for header ${header.id}...`);
+        const { error: deleteError } = await supabase
+            .schema('workout_tracker')
+            .from('routine_exercises')
+            .delete()
+            .eq('routine_id', header.id);
+        if (deleteError) {
+            console.error('STEP 3 FAILED (Possible RLS issue on routine_exercises DELETE?):', deleteError);
+            throw deleteError;
+        }
+
+        // 4. Insert rows (workout_tracker schema)
+        console.log(`STEP 4: Inserting ${resolvedExercises.length} Exercises into routine_exercises...`);
+        const rows = resolvedExercises.map((ex, idx) => ({
+            routine_id: header.id,
+            exercise_id: ex.exercise_id,
+            sets: ex.sets,
+            reps: ex.reps?.toString(),
+            rpe: ex.rpe,
+            notes: ex.notes,
+            exercise_order: idx + 1
+        }));
+
+        const { error: rowsError } = await supabase
+            .schema('workout_tracker')
+            .from('routine_exercises')
+            .insert(rows);
+        if (rowsError) {
+            console.error('STEP 4 FAILED (Possible RLS issue on routine_exercises INSERT?):', rowsError);
+            throw rowsError;
+        }
+
+        console.log('--- RELATIONAL IMPORT SUCCESSFUL ---');
+        return { status: 'success' };
+    } catch (error) {
+        console.error('CRITICAL IMPORT ERROR:', error);
+        throw error;
+    }
 };
 
 // Helper
