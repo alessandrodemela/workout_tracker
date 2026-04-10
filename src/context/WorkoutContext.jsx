@@ -200,7 +200,6 @@ export function WorkoutProvider({ children }) {
         setSecondsElapsed,
         manualDuration,
         setManualDuration,
-        isDurationLocked,
         restTimer,
         startRestTimer,
         stopRestTimer,
