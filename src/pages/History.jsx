@@ -170,7 +170,12 @@ export default function History({ isEmbedded = false }) {
         <div className={`flex flex-col gap-6 ${isEmbedded ? '' : 'pb-32'} animate-fade-in`}>
             {!isEmbedded && (
                 <>
-                    <h1 className="text-3xl font-black tracking-tight text-white mb-2">History</h1>
+                <div className="flex items-center justify-between mb-8">
+                    <div>
+                        <h1 className="text-3xl font-black tracking-tight text-white uppercase">History</h1>
+                        <p className="text-xs font-bold text-brand-500 uppercase tracking-widest">Training Log</p>
+                    </div>
+                </div>
 
                     <div className="grid grid-cols-3 gap-3">
                         <div className="card-glass p-4 rounded-3xl flex flex-col justify-between">

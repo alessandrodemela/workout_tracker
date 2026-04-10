@@ -27,47 +27,23 @@ export default function HomeDashboard() {
 
     const [pendingAction, setPendingAction] = useState(null);
 
-    const { data: templatesData, error: templatesError } = useSWR(`${API_URL}/templates`, fetcher);
     const { data: historyData, error: historyError } = useSWR(`${API_URL}/workout-history`, fetcher);
 
-    if (templatesError || historyError) return (
+    if (historyError) return (
         <div className="p-12 text-[#A3A3A3] text-center font-bold flex flex-col gap-2">
             <span>Error loading dashboard</span>
             <span className="text-[10px] font-mono opacity-50 uppercase">
-                {templatesError?.message || historyError?.message || 'Check your internet or Supabase project status'}
+                {historyError?.message || 'Check your internet or Supabase project status'}
             </span>
         </div>
     );
 
-    const templates = templatesData?.templates || [];
     const workoutDates = [
         ...(historyData?.workouts || []).map(w => w.Date),
         ...(historyData?.functional || []).map(f => f.Date)
     ];
 
-    const groupedTemplates = templates.reduce((acc, curr) => {
-        const key = `${curr.Mesocycle} - Split ${curr.Split}`;
-        if (!acc[key]) acc[key] = [];
-        acc[key].push(curr);
-        return acc;
-    }, {});
-
-    const templateKeys = Object.keys(groupedTemplates).sort();
-
     const isTimerActive = phase !== 'Idle' && phase !== 'Done';
-
-    const handleStartTemplate = (templateExercises) => {
-        if (isTimerActive) {
-            setPendingAction(() => () => {
-                stopTimer();
-                sessionStorage.setItem('templateExercises', JSON.stringify(templateExercises));
-                navigate('/workout', { state: { isLog: false } });
-            });
-            return;
-        }
-        sessionStorage.setItem('templateExercises', JSON.stringify(templateExercises));
-        navigate('/workout', { state: { isLog: false } });
-    };
 
     const handleSelectSession = (type, isLog = false) => {
         setShowSessionPicker(false);
@@ -84,7 +60,7 @@ export default function HomeDashboard() {
     };
 
     return (
-        <div className="flex flex-col gap-8 pb-4 animate-fade-in pt-6">
+        <div className="flex flex-col gap-8 pb-4 animate-fade-in">
             <div className="flex justify-between items-start">
                 <div className="flex flex-col">
                     <span className="text-[10px] font-black text-[#A3A3A3] uppercase tracking-[0.2em] mb-1">Strive</span>
@@ -166,33 +142,7 @@ export default function HomeDashboard() {
             )}
 
             <div className="flex flex-col gap-4">
-                <div className="flex justify-between items-end mb-2">
-                    <h2 className="text-lg font-bold">Routines</h2>
-                </div>
-
-                <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
-                    {templateKeys.length > 0 ? templateKeys.map(key => (
-                        <button
-                            key={key}
-                            onClick={() => handleStartTemplate(groupedTemplates[key])}
-                            className="snap-center flex-shrink-0 w-64 card-glass text-left flex flex-col gap-4 active:scale-95 transition-all"
-                        >
-                            <div className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-brand-500 border border-[#262626]">
-                                <Dumbbell className="w-5 h-5" />
-                            </div>
-                            <div className="flex flex-col mt-2">
-                                <h3 className="text-xl font-bold text-white mb-1 truncate">{key}</h3>
-                                <p className="text-xs font-bold text-[#A3A3A3] uppercase tracking-widest">{groupedTemplates[key].length} Movements</p>
-                            </div>
-                        </button>
-                    )) : (
-                        <div className="w-full text-center py-8 text-[#A3A3A3] text-sm card-glass">No templates found</div>
-                    )}
-                </div>
-            </div>
-
-            <div className="flex flex-col gap-4">
-                <h2 className="text-lg font-bold">Activity</h2>
+                <h2 className="text-lg font-black text-white tracking-tight">Past Activity</h2>
                 <CalendarWidget activeDays={workoutDates} />
             </div>
 

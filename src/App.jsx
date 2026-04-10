@@ -8,6 +8,7 @@ import ActiveWorkout from './pages/ActiveWorkout.jsx';
 import ExerciseDatabase from './pages/ExerciseDatabase.jsx';
 import History from './pages/History.jsx';
 import ConditioningScreen from './pages/ConditioningScreen.jsx';
+import RoutinesPage from './pages/RoutinesPage.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import { WorkoutProvider, useWorkout } from './context/WorkoutContext.jsx';
 import ResumeWorkoutBanner from './components/ResumeWorkoutBanner.jsx';
@@ -63,6 +64,7 @@ function AppContent() {
                             <ConditioningScreen />
                         </div>
                     } />
+                    <Route path="/routines" element={<RoutinesPage />} />
                     <Route path="/exercises" element={<ExerciseDatabase />} />
                     <Route path="/history" element={<History />} />
                     <Route path="/profile" element={<Profile />} />

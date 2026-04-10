@@ -11,14 +11,12 @@ export default function SetRow({ index, row, onRowChange, onRemove, onToggleComp
             <div className="flex-1 grid grid-cols-2 gap-2">
                 <div className="relative">
                     <input
-                        type="number"
-                        inputMode="numeric"
+                        type="text"
                         value={row.reps}
                         onChange={e => {
-                            const val = e.target.value.replace(/[^0-9]/g, '');
-                            onRowChange('reps', val);
+                            onRowChange('reps', e.target.value);
                         }}
-                        className="set-input bg-[#171717] rounded-lg text-sm"
+                        className="set-input bg-[#171717] rounded-lg text-sm text-center"
                         placeholder="reps"
                         disabled={row.completed}
                     />

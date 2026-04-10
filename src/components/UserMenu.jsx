@@ -25,6 +25,7 @@ export default function UserMenu() {
     const [showAppInfo, setShowAppInfo] = useState(false);
 
     const menuItems = [
+        { icon: <User className="w-4 h-4" />, label: 'Profile', onClick: () => navigate('/profile') },
         { icon: <Settings className="w-4 h-4" />, label: 'Settings', onClick: () => navigate('/settings') },
         { icon: <Info className="w-4 h-4" />, label: 'App Info', onClick: () => setShowAppInfo(true) },
     ];
