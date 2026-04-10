@@ -47,6 +47,8 @@ export default function RoutinesPage() {
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [importJson, setImportJson] = useState('');
     const [isCopying, setIsCopying] = useState(false);
+    const [isSavingProfile, setIsSavingProfile] = useState(false);
+    const [profileError, setProfileError] = useState(null);
 
     const hasProfile = profile && profile.goal;
 
@@ -396,6 +398,8 @@ export default function RoutinesPage() {
                 onClose={() => setIsModalOpen(false)}
                 onSubmit={handleProfileSubmit}
                 initialData={profile}
+                isSaving={isSavingProfile}
+                error={profileError}
             />
 
             <PromptDisplayModal
@@ -446,7 +450,7 @@ function NoProfileState({ onOpenModal }) {
     );
 }
 
-function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
+function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData, isSaving, error }) {
     const [formData, setFormData] = useState({
         goal: 'Hypertrophy',
         experience_level: 'Intermediate',
@@ -597,11 +601,22 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
                                 />
                             </div>
 
+                            {error && (
+                                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+                                    <p className="text-xs font-bold text-red-500 uppercase tracking-widest text-center">{error}</p>
+                                </div>
+                            )}
+
                             <button
                                 type="submit"
-                                className="w-full mt-4 h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-sm rounded-2xl flex items-center justify-center hover:bg-brand-500 hover:text-black transition-colors"
+                                disabled={isSaving}
+                                className="w-full mt-4 h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-sm rounded-2xl flex items-center justify-center hover:bg-brand-500 hover:text-black transition-colors disabled:opacity-50"
                             >
-                                Save Profile
+                                {isSaving ? (
+                                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                                        <Activity className="w-5 h-5" />
+                                    </motion.div>
+                                ) : 'Save Profile'}
                             </button>
                         </form>
                     </motion.div>
