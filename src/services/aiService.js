@@ -227,10 +227,10 @@ export async function generateWorkoutMock(profile, summary) {
 }
 
 /**
- * generateClaudePrompt
- * Aggregates all context into a single prompt for the user to copy/paste into Claude.
+ * generateAIPrompt
+ * Aggregates all context into a single prompt for the user to copy/paste into an AI service.
  */
-export async function generateClaudePrompt(profile, summary, userId) {
+export async function generateAIPrompt(profile, summary, userId) {
     if (!profile || !userId) return "Error: Profile and User ID required.";
 
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'PENDING_CONFIG';
@@ -288,10 +288,12 @@ Design the perfect NEXT workout session. Respond ONLY with a raw JSON object str
 
 [OUTPUT FORMAT]
 {
-  "session_type": "Name of the Split",
-  "mesocycle": "Name of the Mesocycle",
-  "block_number": 1,
-  "exercises": [
+  "routine_templates": {
+    "split": "Name of the Split",
+    "mesocycle": "Name of the Mesocycle",
+    "block_number": 1
+  },
+  "routine_exercises": [
     {
       "exercise_name": "Exercise Name",
       "sets": 3,

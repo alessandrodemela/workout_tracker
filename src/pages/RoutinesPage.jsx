@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import useSWR from 'swr';
+import useSWR, { useSWRConfig } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library, Play, Dumbbell, Sparkles, Copy, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetcher, saveUserProfile, saveTemplatesFromAI } from '../api';
-import { buildTrainingSummary, generateWorkoutMock, generateClaudePrompt } from '../services/aiService';
+import { buildTrainingSummary, generateWorkoutMock, generateAIPrompt } from '../services/aiService';
 import { useNavigate } from 'react-router-dom';
 
 const MOCK_AVATAR = (email) => email ? email.substring(0, 2).toUpperCase() : 'ST';
@@ -12,6 +12,7 @@ const MOCK_AVATAR = (email) => email ? email.substring(0, 2).toUpperCase() : 'ST
 export default function RoutinesPage() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { mutate } = useSWRConfig();
 
     // Data fetching
     const { data: profile, mutate: mutateProfile, isLoading: isProfileLoading } = useSWR(
@@ -130,7 +131,7 @@ export default function RoutinesPage() {
     };
 
     const handleGeneratePrompt = async () => {
-        const prompt = await generateClaudePrompt(profile, summary, user.id);
+        const prompt = await generateAIPrompt(profile, summary, user.id);
         setGeneratedPrompt(prompt);
         setIsPromptModalOpen(true);
     };
@@ -157,7 +158,7 @@ export default function RoutinesPage() {
             setTimeout(() => window.location.reload(), 500);
         } catch (err) {
             console.error('Import error:', err);
-            alert('Invalid JSON format or database error. Please check Claude\'s output.');
+            alert('Invalid JSON format or database error. Please check AI\'s output.');
         }
     };
 
@@ -312,7 +313,7 @@ export default function RoutinesPage() {
                             </div>
                             <div className="flex flex-col items-start">
                                 <span className="text-sm font-black text-white uppercase tracking-tight">Import Routine</span>
-                                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-widest mt-0.5">Paste Claude JSON</span>
+                                <span className="text-[9px] font-bold text-[#A3A3A3] uppercase tracking-widest mt-0.5">Paste AI JSON</span>
                             </div>
                         </button>
                     </div>
@@ -617,7 +618,7 @@ function PromptDisplayModal({ isOpen, onClose, prompt, onCopy, isCopying }) {
                                 className="w-full h-14 bg-brand-500 text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2"
                             >
                                 {isCopying ? <ClipboardCheck className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
-                                {isCopying ? 'Copied!' : 'Copy for Claude'}
+                                {isCopying ? 'Copied!' : 'Copy for AI'}
                             </button>
                         </div>
                     </motion.div>
@@ -645,7 +646,7 @@ function ImportRoutineModal({ isOpen, onClose, value, onChange, onImport }) {
                         </div>
                         <div className="p-6 space-y-4">
                             <p className="text-xs text-[#A3A3A3] leading-relaxed">
-                                Paste the raw JSON output from Claude here. Ensure it matches the requested format.
+                                Paste the raw JSON output from the AI here. Ensure it matches the requested format.
                             </p>
                             <textarea
                                 value={value}

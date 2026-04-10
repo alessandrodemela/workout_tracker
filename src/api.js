@@ -338,25 +338,40 @@ export const saveUserProfile = async (userId, profile) => {
 };
 
 export const saveTemplatesFromAI = async (userId, aiData) => {
-    const { session_type, mesocycle, exercises: aiExercises, week_number } = aiData;
+    // Determine JSON format (handle both nested and flat for backward compatibility if possible, but prioritize new structure)
+    const { routine_templates, routine_exercises } = aiData || {};
+    
+    // Fallback/Legacy mapping support
+    const template = routine_templates || {
+        split: aiData.session_type || aiData.split,
+        mesocycle: aiData.mesocycle,
+        block_number: aiData.block_number || aiData.week_number
+    };
+    const exercises = routine_exercises || aiData.exercises || [];
+
+    const { split, mesocycle, block_number } = template;
     
     try {
-        console.log('--- STARTING RELATIONAL IMPORT ---', { userId, mesocycle, session_type });
+        console.log('--- STARTING RELATIONAL IMPORT ---', { userId, mesocycle, split });
         
-        // 1. Resolve Exercises (ID Mapping)
-        // Important: check if exercises is in public or workout_tracker (assuming public for master list)
-        const { data: masterEx, error: masterError } = await supabase.from('exercises').select('id, name');
+        // 1. Resolve Exercises (ID Mapping) - Use workout_tracker schema
+        const { data: masterEx, error: masterError } = await supabase
+            .schema('workout_tracker')
+            .from('exercises')
+            .select('id, name');
+            
         if (masterError) console.error('Error fetching master exercises:', masterError);
         
         const exMap = {};
         (masterEx || []).forEach(e => exMap[e.name.toLowerCase()] = e.id);
 
         const resolvedExercises = [];
-        for (const ex of aiExercises) {
+        for (const ex of exercises) {
             let exId = exMap[ex.exercise_name.toLowerCase()];
             if (!exId) {
                 console.log(`Creating new master exercise: ${ex.exercise_name}`);
                 const { data: newEx, error: createError } = await supabase
+                    .schema('workout_tracker')
                     .from('exercises')
                     .insert([{ name: ex.exercise_name, target_muscle: 'Other', target_area: 'Other', equipment: 'Other' }])
                     .select().maybeSingle();
@@ -377,8 +392,8 @@ export const saveTemplatesFromAI = async (userId, aiData) => {
             .upsert({
                 user_id: userId,
                 mesocycle,
-                split: session_type,
-                block_number: week_number || 1,
+                split: split,
+                block_number: block_number || 1,
                 is_active: true
             }, { onConflict: 'user_id,mesocycle,split,block_number' })
             .select().single();
