@@ -125,10 +125,17 @@ export default function RoutinesPage() {
     };
 
     const handleProfileSubmit = async (formData) => {
-        setIsModalOpen(false);
+    setIsSavingProfile(true);
+    try {
         await saveUserProfile(user.id, formData);
-        mutateProfile();
-    };
+        await mutateProfile();
+        setIsModalOpen(false);  // ← Chiude DOPO il successo
+    } catch (err) {
+        setProfileError(err.message);  // ← Mostra l'errore
+    } finally {
+        setIsSavingProfile(false);
+    }
+};
 
     const handleGeneratePrompt = async () => {
         const prompt = await generateAIPrompt(profile, summary, user.id);
