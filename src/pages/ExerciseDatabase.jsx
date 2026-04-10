@@ -146,8 +146,11 @@ export default function ExerciseDatabase() {
 
     return (
         <div className="flex flex-col gap-6 pb-32 animate-fade-in relative">
-            <div className="flex justify-between items-center mb-2">
-                <h1 className="text-3xl font-black tracking-tight text-white uppercase">Exercises</h1>
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-white uppercase">Exercises</h1>
+                    <p className="text-xs font-bold text-brand-500 uppercase tracking-widest">Movement Database</p>
+                </div>
             </div>
 
             {isAdding && (

@@ -41,12 +41,13 @@ export default function ConditioningScreen() {
         );
     }
 
-    // Selection menu — no min-h-screen, just content height
     return (
-        <div className="flex flex-col gap-6 animate-fade-in pt-6 pb-6">
-            <div className="flex flex-col">
-                <h1 className="text-3xl font-black tracking-tight text-white">Timers</h1>
-                <p className="text-[#A3A3A3] text-sm pl-0.5 capitalize">Functional circuits</p>
+        <div className="flex flex-col gap-6 animate-fade-in pb-8">
+            <div className="flex items-center justify-between mb-8">
+                <div>
+                    <h1 className="text-3xl font-black tracking-tight text-white uppercase">Timers</h1>
+                    <p className="text-xs font-bold text-brand-500 uppercase tracking-widest">Functional circuits</p>
+                </div>
             </div>
 
             <div className="flex flex-col gap-4">

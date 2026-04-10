@@ -163,11 +163,12 @@ export const getWorkoutHistory = async () => {
     const enrichedWorkouts = (logs || []).map(log => ({
         ...log,
         Date: log.date,
-        Session_Type: log.session_type,
+        Session_Type: log.session_type || 'Standard',
         Exercise: toTitleCase(log.exercise),
         Kg: log.kg,
         Sets: log.sets,
         Reps: log.reps,
+        RPE: log.rpe,
         Target_Muscle: toTitleCase((log.exercise && muscleMap[log.exercise.toUpperCase()]) || null)
     }));
 
@@ -282,6 +283,23 @@ export const bulkAddExercises = async (exercises) => {
     return { status: 'success' };
 };
 
+// Profile
+export const getUserProfile = async (userId) => {
+    const { data, error } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();
+    if (error) {
+        if (error.code === 'PGRST116') return null; // not found
+        throw error;
+    }
+    return data;
+};
+
+export const saveUserProfile = async (userId, profile) => {
+    const payload = { user_id: userId, ...profile };
+    const { error } = await supabase.from('user_profiles').upsert(payload, { onConflict: 'user_id' });
+    if (error) throw error;
+    return { status: 'success' };
+};
+
 // Helper
 function getWeekNumber(d) {
     d = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -300,6 +318,11 @@ export const fetcher = async (key) => {
          const parts = key.split('/');
          const exName = parts[parts.length - 1]; 
          return getExerciseHistory(decodeURIComponent(exName));
+    }
+    if (key.includes('/profile')) {
+         const parts = key.split('/');
+         const userId = parts[parts.length - 1];
+         return getUserProfile(userId);
     }
     throw new Error(`Unsupported SWR key: ${key}`);
 };
