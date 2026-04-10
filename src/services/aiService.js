@@ -235,18 +235,29 @@ export async function generateAIPrompt(profile, summary, userId) {
 
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'PENDING_CONFIG';
 
-    // Fetch last 4 weeks of logs for context
+    // 1. Fetch Master Exercise List for ID Mapping
+    const { data: exerciseList } = await supabase
+        .schema('workout_tracker')
+        .from('exercises')
+        .select('id, name, target_muscle');
+
+    const exercisesContext = exerciseList && exerciseList.length > 0
+        ? exerciseList.map(ex => `- ID:${ex.id} | ${ex.name} (${ex.target_muscle})`).join('\n')
+        : "No master exercises found.";
+
+    // 2. Fetch last 30 days of logs for context
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
-    const { data: logs } = await supabase.from('workout_logs')
+    const { data: logs } = await supabase
+        .schema('workout_tracker')
+        .from('workout_logs')
         .select('date, session_type, exercise, sets, reps, kg, rpe')
         .eq('user_id', userId)
         .gte('date', dateStr)
         .order('date', { ascending: false });
 
-    // Format logs for readability in the prompt
     const logsText = logs && logs.length > 0
         ? logs.map(l => `- ${l.date} [${l.session_type}]: ${l.exercise} (${l.sets}x${l.reps} @ ${l.kg}kg, RPE:${l.rpe})`).join('\n')
         : "No recent workout logs found.";
@@ -254,20 +265,39 @@ export async function generateAIPrompt(profile, summary, userId) {
     const prompt = `
 [SYSTEM INSTRUCTIONS]
 Act as an expert Strength & Conditioning AI Coach. 
-Your task is to generate a new workout routine that will be structured into a Header (routine_templates) and Rows (routine_exercises) for the project "${projectId}".
+Your task is to generate one or more workout routines structured for the "workout_tracker" schema.
+Respond ONLY with a raw JSON object string.
 
-[CONTEXT]
-User UUID: ${userId}
-Project ID: ${projectId}
-Schema: workout_tracker
+[SCHEMA INTEL (Internal DB Structure)]
+1. routine_templates (Header):
+   - id: (uuid)
+   - user_id: (uuid)
+   - split: (text) e.g. "Push", "Upper A"
+   - mesocycle: (text) e.g. "Strength Phase 1"
+   - block_number: (int) Use this as the WEEK number or STAGE number (1, 2, 3...)
+   - is_active: (bool) Default true
+
+2. routine_exercises (Rows):
+   - id: (uuid)
+   - routine_id: (uuid, fk)
+   - exercise_id: (uuid, fk)
+   - sets: (int)
+   - reps: (text) e.g. "8-10", "5", "AMRAP"
+   - rpe: (float) 1-10 scale
+   - notes: (text) Instructions, rest times, and tempo
+   - exercise_order: (int)
+
+[MASTER EXERCISE LIST (Use these IDs for exercise_id)]
+${exercisesContext}
 
 [ATHLETE PROFILE]
-- Level: ${profile.experience_level || 'Not specified'}
-- Goal: ${profile.goal || 'Not specified'}
+- Level: ${profile.experience_level || 'Intermediate'}
+- Goal: ${profile.goal || 'Hypertrophy'}
 - Preferred Split: ${profile.preferred_split || 'Not specified'}
-- Training Days/Week: ${profile.training_days_per_week || 'Not specified'}
+- Training Days/Week: ${profile.training_days_per_week || '4'}
+- Volume Targets (Weekly Sets): ${profile.volume_targets || 'Maintain standard 8-12 per major muscle'}
 - Additional Info: ${profile.additional_info || 'None'}
-- Custom Notes/Concepts: ${profile.notes || 'None'}
+- Training Concepts: ${profile.notes || 'None'}
 
 [TRAINING DATA (Last 30 Days)]
 - Frequency: ${summary.weekly_frequency} sessions/week
@@ -278,41 +308,46 @@ Schema: workout_tracker
 [HISTORY LOGS]
 ${logsText}
 
-[DATABASE TARGET: routine_templates & routine_exercises]
-You are creating entries that will be split and linked by Exercise ID:
-- routine_templates: Stores the session metadata (mesocycle, split, block).
-- routine_exercises: Stores the reps, sets, and RPE, linked to a Master Exercise Record.
+[TRAINING RULES & LOGIC]
+1. PROGRESSION: If history shows all sets reached the top of the rep range (e.g., 10-10-10 in an 8-10 range), increase load (kg) by 1-2.5kg for the next session.
+2. CONSISTENCY: Do not repeat the same "Main Lift" (first exercise of the session) for more than 2 consecutive sessions. Rotate variations if needed.
+3. REST TIMES: Specify rest times in 'notes' (e.g., "Rest 3m" for compounds, "Rest 60-90s" for isolations).
+4. TEMPO: Enforce lengthened-bias tempo (e.g., 3-0-1-0 or slow eccentrics) in 'notes'.
+5. TIME CONSTRAINT: Total session duration must be <= 60 minutes.
+6. RPE PROGRESSION: Scale RPE across sets (e.g., Set 1: RPE 7, Final Set: RPE 9-10/AMRAP).
+7. PERIODIZATION: Be explicit in the "mesocycle" name about which week of the block we are in (e.g., "Meso 1 - Week 1").
 
 [MISSION]
-Design the perfect NEXT workout session. Respond ONLY with a raw JSON object string.
+Design the perfect NEXT workout session(s). You can generate multiple routines if it makes sense for a full split.
 
 [OUTPUT FORMAT]
+You MUST return a JSON array of workout objects. Each object contains:
 {
-  "routine_templates": {
-    "split": "Name of the Split",
-    "mesocycle": "Name of the Mesocycle",
-    "block_number": 1
-  },
-  "routine_exercises": [
+  "routines": [
     {
-      "exercise_name": "Exercise Name",
-      "sets": 3,
-      "reps": "8-10",
-      "rpe": 8,
-      "notes": "Coach instructions..."
+      "routine_templates": {
+        "split": "String",
+        "mesocycle": "String",
+        "block_number": Integer
+      },
+      "routine_exercises": [
+        {
+          "exercise_id": "UUID from Master List",
+          "exercise_name": "String (for reference)",
+          "sets": Integer,
+          "reps": "String",
+          "rpe": Float,
+          "notes": "String"
+        }
+      ]
     }
   ]
 }
 
-CRITICAL: Return ONLY JSON. No explanations, no markdown code blocks. Just the raw { ... } object.
-If approved proceed to save routine in Supabase DB. 
-Talk like caveman.
-Do not activate skill for now
-
-TESTING: Provide me feedback on this prompt after finishing the save routine in Supabase DB.
-
-
+CRITICAL: Return ONLY the JSON object. No explanations, no markdown blocks.
 `;
+
 
     return prompt;
 }
+

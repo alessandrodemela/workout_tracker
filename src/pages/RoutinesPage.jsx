@@ -447,7 +447,8 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
         preferred_split: 'Upper/Lower',
         equipment: [],
         additional_info: '',
-        notes: ''
+        notes: '',
+        volume_targets: ''
     });
 
     useEffect(() => {
@@ -459,7 +460,8 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
                 preferred_split: initialData.preferred_split,
                 equipment: initialData.equipment || [],
                 additional_info: initialData.additional_info || '',
-                notes: initialData.notes || ''
+                notes: initialData.notes || '',
+                volume_targets: initialData.volume_targets || ''
             });
         }
     }, [initialData, isOpen]);
@@ -577,6 +579,17 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData }) {
                                 />
                             </div>
 
+                            {/* Volume Targets */}
+                            <div>
+                                <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-widest mb-2">Weekly Muscle Volume Targets</label>
+                                <textarea
+                                    value={formData.volume_targets}
+                                    onChange={(e) => setFormData({ ...formData, volume_targets: e.target.value })}
+                                    placeholder="Delts: 10-14 sets/week, Chest: 8-12 sets/week..."
+                                    className="w-full bg-[#171717] border border-[#262626] rounded-2xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-brand-500 h-20 resize-none"
+                                />
+                            </div>
+
                             <button
                                 type="submit"
                                 className="w-full mt-4 h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-sm rounded-2xl flex items-center justify-center hover:bg-brand-500 hover:text-black transition-colors"
@@ -651,7 +664,7 @@ function ImportRoutineModal({ isOpen, onClose, value, onChange, onImport }) {
                             <textarea
                                 value={value}
                                 onChange={(e) => onChange(e.target.value)}
-                                placeholder='{ "session_type": "...", "exercises": [...] }'
+                                placeholder='{ "routines": [ { "routine_templates": {...}, "routine_exercises": [...] } ] }'
                                 className="w-full h-64 bg-black border border-[#171717] rounded-2xl p-4 text-xs font-mono text-brand-500 focus:outline-none focus:border-brand-500 resize-none"
                             />
                             <button
