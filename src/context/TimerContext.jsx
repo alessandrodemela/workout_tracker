@@ -31,6 +31,7 @@ export const TimerProvider = ({ children }) => {
         if (key === 'workTime') minValue = 5; // at least 5s of work
         if (key === 'rounds') minValue = 1; // at least 1 round
         if (key === 'cycles') minValue = 1; // at least 1 cycle
+        if (key === 'cycleRestTime') minValue = 5; // at least 5s cycle rest if applicable
         
         setConfig(prev => ({
             ...prev,
@@ -56,7 +57,7 @@ export const TimerProvider = ({ children }) => {
             gain.connect(context.destination);
             oscillator.type = type;
             oscillator.frequency.value = freq;
-            gain.gain.setValueAtTime(0.1, context.currentTime);
+            gain.gain.setValueAtTime(1.0, context.currentTime); // LOUDER
             gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + duration);
 
             // Resuming happens asynchronously, but we can start the oscillator anyway

@@ -8,11 +8,11 @@ import useSWR from 'swr';
 import { API_URL, fetcher } from '../api';
 
 // Reusable config row component
-function ConfigRow({ icon, iconBg, title, subtitle, borderHover, value, unit, onDecrement, onIncrement, onChange }) {
+function ConfigRow({ icon, iconBg, title, subtitle, borderHover, value, unit, onDecrement, onIncrement, onChange, disabled }) {
     return (
-        <div className={`flex items-center justify-between bg-[#171717]/50 p-4 rounded-3xl border border-[#262626] ${borderHover} transition-colors flex-shrink-0`}>
+        <div className={`flex items-center justify-between bg-[#171717]/50 p-4 rounded-3xl border border-[#262626] ${disabled ? 'opacity-20 pointer-events-none' : borderHover} transition-colors flex-shrink-0`}>
             <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-2xl ${iconBg}`}>{icon}</div>
+                <div className={`p-3 rounded-2xl ${disabled ? 'bg-[#262626] text-[#A3A3A3]' : iconBg}`}>{icon}</div>
                 <div className="flex flex-col">
                     <span className="text-xs font-black uppercase tracking-widest text-white">{title}</span>
                     <span className="text-[10px] font-bold text-[#A3A3A3]">{subtitle}</span>
@@ -25,11 +25,11 @@ function ConfigRow({ icon, iconBg, title, subtitle, borderHover, value, unit, on
                         type="number"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={value === 0 ? '' : value}
+                        value={disabled ? '-' : (value === 0 ? '' : value)}
                         onChange={onChange}
                         className="w-full bg-transparent text-center text-xl font-black text-white focus:outline-none appearance-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none p-0"
                     />
-                    {unit && <span className="text-[#A3A3A3] text-sm font-bold">{unit}</span>}
+                    {!disabled && unit && <span className="text-[#A3A3A3] text-sm font-bold">{unit}</span>}
                 </div>
                 <button onClick={onIncrement} className="w-10 h-10 rounded-full bg-[#262626] flex items-center justify-center text-white hover:bg-brand-500 hover:text-black transition-all"><Plus className="w-4 h-4" /></button>
             </div>
@@ -61,6 +61,11 @@ export default function ConditioningTimer({ onClose }) {
         masterExercises.filter(e => e.toLowerCase().includes(exerciseSearch.toLowerCase())).slice(0, 20),
         [masterExercises, exerciseSearch]
     );
+
+    const maxExercises = activeTimerMode === 'amrap' ? null : config.rounds;
+    const canAddExercise = maxExercises === null || timerExercises.length < maxExercises;
+    const isSequenceValid = timerExercises.length === 0 || maxExercises === null || timerExercises.length === maxExercises;
+    const missingExercises = maxExercises ? maxExercises - timerExercises.length : 0;
 
     const formatTime = (seconds) => {
         const m = Math.floor(seconds / 60);
@@ -133,7 +138,7 @@ export default function ConditioningTimer({ onClose }) {
         return (
             <div className="h-full flex flex-col animate-fade-in w-full">
                 {/* Fixed header */}
-                <div className="flex items-center gap-4 flex-shrink-0 pt-6">
+                <div className="flex items-center gap-4 flex-shrink-0">
                     <button
                         onClick={(e) => { e.stopPropagation(); onClose(); }}
                         className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
@@ -141,13 +146,14 @@ export default function ConditioningTimer({ onClose }) {
                         <ChevronLeft className="w-6 h-6" />
                     </button>
                     <div className="flex flex-col">
-                        <h1 className="text-3xl font-black tracking-tight text-white">Timers</h1>
-                        <p className="text-[#A3A3A3] text-sm pl-0.5">Setup your {modeName.toLowerCase()}</p>
+                        <h1 className="text-2xl font-black tracking-tight text-white">Setup your {activeTimerMode === 'circuit' ? 'circuit' : modeName}</h1>
+                        {/* <p className="text-[#A3A3A3] text-sm pl-0.5">Setup your {modeName.toLowerCase()}</p> */}
                     </div>
                 </div>
 
                 {/* Scrollable config list */}
                 <div className="flex flex-col gap-4 mt-6 flex-1 overflow-y-auto pb-4">
+                    {/* 1. Prepare */}
                     <ConfigRow
                         icon={<Clock className="w-5 h-5" />} iconBg="bg-brand-500/10 text-brand-500"
                         title="Prepare" subtitle="Get ready" borderHover="hover:border-brand-500/30"
@@ -157,6 +163,31 @@ export default function ConditioningTimer({ onClose }) {
                         onChange={makeChangeHandler('prepareTime')}
                     />
 
+                    {/* 2. Full Cycles */}
+                    {activeTimerMode === 'circuit' && (
+                        <ConfigRow
+                            icon={<RefreshCw className="w-5 h-5" />} iconBg="bg-brand-500/10 text-brand-500"
+                            title="Full Cycles" subtitle="Total repeats" borderHover="hover:border-brand-500/30"
+                            value={config.cycles} unit=""
+                            onDecrement={() => updateConfig('cycles', config.cycles - 1)}
+                            onIncrement={() => updateConfig('cycles', config.cycles + 1)}
+                            onChange={makeChangeHandler('cycles')}
+                        />
+                    )}
+
+                    {/* 3. Exercises / Rounds */}
+                    {activeTimerMode !== 'amrap' && (
+                        <ConfigRow
+                            icon={<Repeat className="w-5 h-5" />} iconBg="bg-brand-500/10 text-brand-500"
+                            title={activeTimerMode === 'emom' ? "Total Rounds" : "Exercises"} subtitle={activeTimerMode === 'emom' ? "Total intervals" : "Per cycle"} borderHover="hover:border-brand-500/30"
+                            value={config.rounds} unit=""
+                            onDecrement={() => updateConfig('rounds', config.rounds - 1)}
+                            onIncrement={() => updateConfig('rounds', config.rounds + 1)}
+                            onChange={makeChangeHandler('rounds')}
+                        />
+                    )}
+
+                    {/* 4. Work Time */}
                     {activeTimerMode === 'amrap' ? (
                         <ConfigRow
                             icon={<Zap className="w-5 h-5" />} iconBg="bg-red-500/10 text-red-500"
@@ -180,47 +211,30 @@ export default function ConditioningTimer({ onClose }) {
                         />
                     )}
 
+                    {/* 5. Rest Time */}
                     {activeTimerMode === 'circuit' && (
                         <ConfigRow
                             icon={<Coffee className="w-5 h-5" />} iconBg="bg-blue-500/10 text-blue-400"
-                            title="Rest Time" subtitle="Recovery" borderHover="hover:border-blue-500/30"
+                            title="Rest Time" subtitle="Between exercises" borderHover="hover:border-blue-500/30"
                             value={config.restTime} unit="s"
                             onDecrement={() => updateConfig('restTime', config.restTime - 5)}
                             onIncrement={() => updateConfig('restTime', config.restTime + 5)}
                             onChange={makeChangeHandler('restTime')}
+                            disabled={config.rounds <= 1}
                         />
                     )}
 
-                    {activeTimerMode !== 'amrap' && (
-                        <ConfigRow
-                            icon={<Repeat className="w-5 h-5" />} iconBg="bg-brand-500/10 text-brand-500"
-                            title={activeTimerMode === 'emom' ? "Rounds" : "Exercises"} subtitle="Per cycle" borderHover="hover:border-brand-500/30"
-                            value={config.rounds} unit=""
-                            onDecrement={() => updateConfig('rounds', config.rounds - 1)}
-                            onIncrement={() => updateConfig('rounds', config.rounds + 1)}
-                            onChange={makeChangeHandler('rounds')}
-                        />
-                    )}
-
+                    {/* 6. Cycle Rest */}
                     {activeTimerMode === 'circuit' && (
-                        <>
-                            <ConfigRow
-                                icon={<RefreshCw className="w-5 h-5" />} iconBg="bg-brand-500/10 text-brand-500"
-                                title="Full Cycles" subtitle="Total repeats" borderHover="hover:border-brand-500/30"
-                                value={config.cycles} unit=""
-                                onDecrement={() => updateConfig('cycles', config.cycles - 1)}
-                                onIncrement={() => updateConfig('cycles', config.cycles + 1)}
-                                onChange={makeChangeHandler('cycles')}
-                            />
-                            <ConfigRow
-                                icon={<Timer className="w-5 h-5" />} iconBg="bg-blue-500/10 text-blue-600"
-                                title="Cycle Rest" subtitle="Between cycles" borderHover="hover:border-blue-500/30"
-                                value={config.cycleRestTime} unit="s"
-                                onDecrement={() => updateConfig('cycleRestTime', config.cycleRestTime - 10)}
-                                onIncrement={() => updateConfig('cycleRestTime', config.cycleRestTime + 10)}
-                                onChange={makeChangeHandler('cycleRestTime')}
-                            />
-                        </>
+                        <ConfigRow
+                            icon={<Timer className="w-5 h-5" />} iconBg="bg-blue-500/10 text-blue-600"
+                            title="Cycle Rest" subtitle="Between cycles" borderHover="hover:border-blue-500/30"
+                            value={config.cycleRestTime} unit="s"
+                            onDecrement={() => updateConfig('cycleRestTime', config.cycleRestTime - 5)}
+                            onIncrement={() => updateConfig('cycleRestTime', config.cycleRestTime + 5)}
+                            onChange={makeChangeHandler('cycleRestTime')}
+                            disabled={config.cycles <= 1}
+                        />
                     )}
 
                     {/* ─── Exercise Sequence ─── */}
@@ -228,14 +242,20 @@ export default function ConditioningTimer({ onClose }) {
                         <div className="flex items-center justify-between">
                             <div className="flex flex-col">
                                 <span className="text-xs font-black uppercase tracking-widest text-white">Exercise Sequence</span>
-                                <span className="text-[10px] font-bold text-[#A3A3A3]">Optional — shown during round</span>
+                                <span className="text-[10px] font-bold text-[#A3A3A3]">
+                                    {maxExercises === null ? "Optional" : 
+                                     timerExercises.length === 0 ? `Optional (or add exactly ${maxExercises})` :
+                                     `${timerExercises.length} / ${maxExercises} added`}
+                                </span>
                             </div>
-                            <button
-                                onClick={() => setShowExercisePicker(v => !v)}
-                                className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-black hover:bg-brand-400 transition-all"
-                            >
-                                <Plus className="w-4 h-4" />
-                            </button>
+                            {canAddExercise && (
+                                <button
+                                    onClick={() => setShowExercisePicker(v => !v)}
+                                    className="w-8 h-8 rounded-full bg-brand-500 flex items-center justify-center text-black hover:bg-brand-400 transition-all"
+                                >
+                                    <Plus className="w-4 h-4" />
+                                </button>
+                            )}
                         </div>
 
                         {/* Exercise picker dropdown */}
@@ -290,13 +310,24 @@ export default function ConditioningTimer({ onClose }) {
 
                 {/* Sticky Start button */}
                 <div className="flex-shrink-0 py-4 border-t border-[#262626]">
-                    <button
-                        onClick={(e) => { e.stopPropagation(); isWorkoutActive ? setShowWorkoutConflictModal(true) : startTimer(timerExercises); }}
-                        className="w-full py-5 rounded-[2rem] bg-brand-500 text-black font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95 transition-transform cursor-pointer"
-                    >
-                        <Play className="w-6 h-6 fill-black" />
-                        Start {modeName}
-                    </button>
+                    {!isSequenceValid ? (
+                        <button
+                            disabled
+                            className="w-full py-5 rounded-[2rem] bg-[#171717] text-[#A3A3A3] font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 cursor-not-allowed border border-[#262626]"
+                        >
+                            {missingExercises < 0 
+                                ? `Remove ${Math.abs(missingExercises)} ${Math.abs(missingExercises) === 1 ? 'exercise' : 'exercises'}`
+                                : `Add ${missingExercises} more ${missingExercises === 1 ? 'exercise' : 'exercises'}`}
+                        </button>
+                    ) : (
+                        <button
+                            onClick={(e) => { e.stopPropagation(); isWorkoutActive ? setShowWorkoutConflictModal(true) : startTimer(timerExercises); }}
+                            className="w-full py-5 rounded-[2rem] bg-brand-500 text-black font-black uppercase tracking-widest text-[16px] flex items-center justify-center gap-2 shadow-[0_0_30px_rgba(212,255,0,0.3)] active:scale-95 transition-transform cursor-pointer"
+                        >
+                            <Play className="w-6 h-6 fill-black" />
+                            Start {modeName}
+                        </button>
+                    )}
                 </div>
 
                 <ConfirmModal
@@ -324,19 +355,14 @@ export default function ConditioningTimer({ onClose }) {
     return (
         <div className="h-full flex flex-col animate-fade-in w-full">
             {/* Top bar */}
-            <div className="flex justify-between items-center flex-shrink-0 pt-6">
+            <div className="flex justify-between items-center flex-shrink-0">
                 <button
                     onClick={(e) => { e.stopPropagation(); onClose(); }}
                     className="w-10 h-10 rounded-full bg-[#171717]/80 flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
                 >
                     <ChevronLeft className="w-6 h-6" />
                 </button>
-                <button
-                    onClick={(e) => { e.stopPropagation(); setIsConfiguring(true); }}
-                    className="w-10 h-10 rounded-full bg-[#171717]/80 flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors cursor-pointer"
-                >
-                    <Settings2 className="w-5 h-5" />
-                </button>
+                <div className="w-10 h-10" />
             </div>
 
             {/* Big timer display — grows to fill space */}

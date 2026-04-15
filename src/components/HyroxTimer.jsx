@@ -87,7 +87,6 @@ export default function HyroxTimer({ onClose }) {
                 bbj: '40m', rowing: '500m', farmerCarry: '100m', sandbagLunges: '50m', wallBall: '50'
             });
         }
-        playBeep();
     };
     
     const [splits, setSplits] = useState([]);
@@ -230,7 +229,7 @@ export default function HyroxTimer({ onClose }) {
     if (view === 'setup') {
         return (
             <div className="h-full flex flex-col animate-fade-in w-full">
-                <div className="flex items-center gap-4 flex-shrink-0 pt-6">
+                <div className="flex items-center gap-4 flex-shrink-0">
                     <button onClick={onClose} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors cursor-pointer">
                         <ChevronLeft className="w-6 h-6" />
                     </button>
@@ -243,18 +242,18 @@ export default function HyroxTimer({ onClose }) {
                 <div className="flex flex-col gap-3 mt-8 flex-1 overflow-y-auto pr-1 pb-4">
                     <div className="flex gap-3 mb-2">
                         <button
-                            onClick={() => applyPreset('full')}
-                            className="flex-1 py-4 bg-[#171717] border border-brand-500/30 hover:border-brand-500 rounded-2xl flex flex-col items-center justify-center gap-1 group transition-all active:scale-95"
-                        >
-                            <Flag className="w-5 h-5 text-brand-500" />
-                            <span className="text-[10px] font-black uppercase tracking-widest text-white">Full Preset</span>
-                        </button>
-                        <button
                             onClick={() => applyPreset('half')}
                             className="flex-1 py-4 bg-[#171717] border border-brand-500/30 hover:border-brand-500 rounded-2xl flex flex-col items-center justify-center gap-1 group transition-all active:scale-95"
                         >
                             <Zap className="w-5 h-5 text-brand-500" />
                             <span className="text-[10px] font-black uppercase tracking-widest text-white">Half Preset</span>
+                        </button>
+                        <button
+                            onClick={() => applyPreset('full')}
+                            className="flex-1 py-4 bg-[#171717] border border-brand-500/30 hover:border-brand-500 rounded-2xl flex flex-col items-center justify-center gap-1 group transition-all active:scale-95"
+                        >
+                            <Flag className="w-5 h-5 text-brand-500" />
+                            <span className="text-[10px] font-black uppercase tracking-widest text-white">Full Preset</span>
                         </button>
                     </div>
 
@@ -299,7 +298,7 @@ export default function HyroxTimer({ onClose }) {
 
         return (
             <div className="h-full flex flex-col animate-fade-in w-full">
-                <div className="flex justify-between items-center flex-shrink-0 pt-6">
+                <div className="flex justify-between items-center flex-shrink-0">
                     <button
                         onClick={() => setShowStopModal(true)}
                         className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 hover:bg-red-500 hover:text-white transition-colors"
