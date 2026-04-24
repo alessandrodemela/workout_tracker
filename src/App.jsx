@@ -54,7 +54,16 @@ function AppContent() {
             )}
 
             {/* Scrollable page content — sits above the fixed nav */}
-            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-16 ${showNav ? 'pb-[calc(env(safe-area-inset-bottom,20px)+96px)]' : 'pb-0'}`}>
+            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-16 transition-all duration-300 ${
+                showNav 
+                    ? `pb-[calc(env(safe-area-inset-bottom,20px)+${
+                        96 + (
+                            ((isActive && location.pathname !== '/workout' && (location.pathname !== '/conditioning' || !activeTimerMode)) ? 84 : 0) +
+                            ((isTimerActive && (!activeTimerMode || location.pathname !== '/conditioning')) ? 84 : 0)
+                        )
+                    }px)]` 
+                    : 'pb-0'
+            }`}>
                 <Routes location={location} key={location.pathname}>
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />

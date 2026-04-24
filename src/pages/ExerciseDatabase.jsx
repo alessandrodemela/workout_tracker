@@ -5,6 +5,7 @@ import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle, Dumbb
 import { API_URL, fetcher, addExercise } from '../api';
 import PrimaryButton from '../components/PrimaryButton';
 import { useWorkout } from '../context/WorkoutContext';
+import { useTimer } from '../context/TimerContext';
 import ConfirmModal from '../components/ConfirmModal';
 
 const EQUIPMENT_COLORS = {
@@ -41,6 +42,8 @@ const MUSCLE_TO_AREA_MAP = {
 
 export default function ExerciseDatabase() {
     const { isActive, addExercise: addExerciseToWorkout } = useWorkout();
+    const { phase, activeTimerMode } = useTimer();
+    const isTimerActive = phase !== 'Idle' && phase !== 'Done';
     const { data: exData, error: exError, mutate } = useSWR(`${API_URL}/exercises`, fetcher);
     const { data: histData, error: histError } = useSWR(`${API_URL}/workout-history`, fetcher);
     const exercises = exData?.full_list || [];
@@ -456,7 +459,13 @@ export default function ExerciseDatabase() {
             {!isAdding && (
                 <button
                     onClick={() => setIsAdding(true)}
-                    className="fixed bottom-[calc(env(safe-area-inset-bottom,20px)+100px)] right-6 w-16 h-16 bg-brand-500 rounded-2xl text-black flex items-center justify-center shadow-[0_12px_40px_rgba(212,255,0,0.3)] z-40 hover:scale-110 active:scale-95 transition-all group border-b-4 border-black/20"
+                    className={`fixed right-6 w-16 h-16 bg-brand-500 rounded-2xl text-black flex items-center justify-center shadow-[0_12px_40px_rgba(212,255,0,0.3)] z-40 hover:scale-110 active:scale-95 transition-all group border-b-4 border-black/20 ${
+                        (isActive && isTimerActive)
+                            ? 'bottom-[calc(env(safe-area-inset-bottom,20px)+260px)]'
+                            : (isActive || isTimerActive)
+                            ? 'bottom-[calc(env(safe-area-inset-bottom,20px)+180px)]'
+                            : 'bottom-[calc(env(safe-area-inset-bottom,20px)+100px)]'
+                    }`}
                 >
                     <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" strokeWidth={3} />
                 </button>
