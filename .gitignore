@@ -32,3 +32,5 @@ Thumbs.db
 # Local dev notes — never push
 DEVNOTES.md
 AI_instruction.md
+
+*.ps1
