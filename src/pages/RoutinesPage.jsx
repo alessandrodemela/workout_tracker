@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library, Play, Dumbbell, Sparkles, Copy, ClipboardCheck } from 'lucide-react';
+import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library, Play, Dumbbell, Sparkles, Copy, ClipboardCheck, MoreHorizontal, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { fetcher, saveUserProfile, saveTemplatesFromAI } from '../api';
+import { fetcher, saveUserProfile, saveTemplatesFromAI, updateRoutineMeta, deleteRoutine } from '../api';
 import { buildTrainingSummary, generateWorkoutMock, generateAIPrompt } from '../services/aiService';
 import { useNavigate } from 'react-router-dom';
 
@@ -49,6 +49,12 @@ export default function RoutinesPage() {
     const [isCopying, setIsCopying] = useState(false);
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [profileError, setProfileError] = useState(null);
+
+    // Routine management state
+    const [activeMenuId, setActiveMenuId] = useState(null); // routineId with open ⋯ menu
+    const [editingRoutine, setEditingRoutine] = useState(null); // { routineId, split, mesocycle }
+    const [deletingRoutine, setDeletingRoutine] = useState(null); // { routineId, split }
+    const [isRoutineOp, setIsRoutineOp] = useState(false);
 
     const hasProfile = profile && profile.goal;
 
@@ -107,6 +113,7 @@ export default function RoutinesPage() {
     const handleStartStoredRoutine = (group) => {
         const prefillExercises = group.exercises.map(ex => ({
             name: ex.exercise_name || ex.Exercise_Name,
+            notes: ex.notes || ex.Notes || '',
             sets: Array.from({ length: (ex.sets || ex.Sets) || 3 }, () => ({
                 kg: '',
                 reps: ex.reps || ex.Reps,
@@ -168,6 +175,36 @@ export default function RoutinesPage() {
         } catch (err) {
             console.error('Import error:', err);
             alert('Invalid JSON format or database error. Please check AI\'s output.');
+        }
+    };
+
+    const handleEditRoutine = async ({ split, mesocycle }) => {
+        if (!editingRoutine) return;
+        setIsRoutineOp(true);
+        try {
+            await updateRoutineMeta(editingRoutine.routineId, { split, mesocycle });
+            await mutate('/templates');
+            setEditingRoutine(null);
+        } catch (err) {
+            console.error('Edit routine error:', err);
+            alert('Could not update routine. Please try again.');
+        } finally {
+            setIsRoutineOp(false);
+        }
+    };
+
+    const handleDeleteRoutine = async () => {
+        if (!deletingRoutine) return;
+        setIsRoutineOp(true);
+        try {
+            await deleteRoutine(deletingRoutine.routineId);
+            await mutate('/templates');
+            setDeletingRoutine(null);
+        } catch (err) {
+            console.error('Delete routine error:', err);
+            alert('Could not delete routine. Please try again.');
+        } finally {
+            setIsRoutineOp(false);
         }
     };
 
@@ -239,57 +276,114 @@ export default function RoutinesPage() {
 
                         <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
                             {groupedTemplates.map((group, idx) => (
-                                <motion.button
+                                <motion.div
                                     key={group.id}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => handleStartStoredRoutine(group)}
-                                    className={`snap-center flex-shrink-0 w-72 h-44 rounded-[2.5rem] p-6 text-left flex flex-col justify-between relative overflow-hidden group transition-all shadow-xl ${group.isRecommended
+                                    whileTap={{ scale: activeMenuId ? 1 : 0.98 }}
+                                    onClick={() => {
+                                        if (activeMenuId === group.id) {
+                                            setActiveMenuId(null);
+                                        } else {
+                                            handleStartStoredRoutine(group);
+                                        }
+                                    }}
+                                    className={`snap-center flex-shrink-0 w-72 h-44 rounded-[2.5rem] p-6 text-left flex flex-col justify-between relative transition-all shadow-xl cursor-pointer ${
+                                        group.isRecommended
                                             ? 'bg-brand-500 text-black shadow-brand-900/20'
                                             : 'bg-[#0A0A0A] border border-[#171717] text-white hover:border-brand-500/30'
-                                        } ${group.isCompleted ? 'opacity-60 grayscale-[0.5]' : ''}`}
+                                    } ${group.isCompleted ? 'opacity-60 grayscale-[0.5]' : ''} ${
+                                        activeMenuId === group.id ? 'z-[60] scale-[1.02] border-brand-500/50' : 'z-10'
+                                    }`}
                                 >
-                                    {/* Background Icon */}
-                                    <div className="absolute -top-4 -right-4 transition-transform group-hover:scale-110">
-                                        {group.isRecommended ? (
-                                            <Play className="w-32 h-32 text-black opacity-10 fill-black" />
-                                        ) : (
-                                            <Dumbbell className="w-32 h-32 text-white opacity-[0.03]" />
-                                        )}
+                                    {/* Background Icon - Wrapped to prevent overflow since we removed overflow-hidden from parent */}
+                                    <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none">
+                                        <div className="absolute -top-4 -right-4">
+                                            {group.isRecommended ? (
+                                                <Play className="w-32 h-32 text-black opacity-10 fill-black" />
+                                            ) : (
+                                                <Dumbbell className="w-32 h-32 text-white opacity-[0.03]" />
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="relative z-10 flex flex-col h-full justify-between">
                                         <div className="flex flex-col">
                                             <div className="flex items-center justify-between">
-                                                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${group.isRecommended ? 'text-black/60' : 'text-brand-500'
-                                                    }`}>
+                                                <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${group.isRecommended ? 'text-black/60' : 'text-brand-500'}`}>
                                                     {group.mesocycle} • BLOCK {group.block}
                                                 </span>
-                                                {group.isCompleted && (
-                                                    <CheckCircle className={`w-4 h-4 ${group.isRecommended ? 'text-black/60' : 'text-brand-500'}`} />
-                                                )}
+                                                {/* ⋯ Menu Button */}
+                                                <div className="relative">
+                                                    <button
+                                                        onClick={(e) => { 
+                                                            e.stopPropagation(); 
+                                                            setActiveMenuId(activeMenuId === group.id ? null : group.id); 
+                                                        }}
+                                                        className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-lg ${
+                                                            group.isRecommended
+                                                                ? 'bg-black/10 hover:bg-black/20 text-black/60'
+                                                                : 'bg-[#171717] hover:bg-[#262626] text-[#A3A3A3] hover:text-white border border-white/5'
+                                                        }`}
+                                                    >
+                                                        <MoreHorizontal className="w-4 h-4" />
+                                                    </button>
+
+                                                    <AnimatePresence>
+                                                        {activeMenuId === group.id && (
+                                                            <motion.div
+                                                                initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                                                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                                exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                                                                transition={{ duration: 0.15 }}
+                                                                className="absolute right-0 top-10 z-[70] bg-[#121212] border border-[#262626] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-w-[150px]"
+                                                            >
+                                                                <button
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        setActiveMenuId(null); 
+                                                                        setEditingRoutine({ routineId: group.routineId, split: group.split, mesocycle: group.mesocycle }); 
+                                                                    }}
+                                                                    className="flex items-center gap-3 w-full px-5 py-4 text-xs font-bold text-white hover:bg-[#171717] transition-colors"
+                                                                >
+                                                                    <Edit3 className="w-4 h-4 text-brand-500" />
+                                                                    Edit
+                                                                </button>
+                                                                <div className="h-px bg-[#262626]" />
+                                                                <button
+                                                                    onClick={(e) => { 
+                                                                        e.stopPropagation(); 
+                                                                        setActiveMenuId(null); 
+                                                                        setDeletingRoutine({ routineId: group.routineId, split: group.split }); 
+                                                                    }}
+                                                                    className="flex items-center gap-3 w-full px-5 py-4 text-xs font-bold text-red-400 hover:bg-[#171717] transition-colors"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                    Delete
+                                                                </button>
+                                                            </motion.div>
+                                                        )}
+                                                    </AnimatePresence>
+                                                </div>
                                             </div>
-                                            <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mt-1 group-hover:translate-x-1 transition-transform">
+                                            <h3 className="text-2xl font-black uppercase tracking-tighter leading-none mt-1">
                                                 {group.split}
                                             </h3>
                                         </div>
 
                                         <div className="flex items-center justify-between">
                                             <div className="flex flex-col">
-                                                <span className={`text-[10px] font-bold uppercase ${idx === 0 ? 'text-black/60' : 'text-[#525252]'
-                                                    }`}>
+                                                <span className={`text-[10px] font-bold uppercase ${group.isRecommended ? 'text-black/60' : 'text-[#525252]'}`}>
                                                     {group.exercises.length} Movements
                                                 </span>
                                             </div>
-                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${idx === 0 ? 'bg-black/10' : 'bg-brand-500/10'
-                                                }`}>
-                                                <Play className={`w-5 h-5 ${idx === 0 ? 'fill-black text-black' : 'fill-brand-500 text-brand-500'}`} />
+                                            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${group.isRecommended ? 'bg-black/10' : 'bg-brand-500/10'}`}>
+                                                <Play className={`w-5 h-5 ${group.isRecommended ? 'fill-black text-black' : 'fill-brand-500 text-brand-500'}`} />
                                             </div>
                                         </div>
                                     </div>
-                                </motion.button>
+                                </motion.div>
                             ))}
 
-                            {/* Add New Logic or Placeholder if needed */}
+                            {/* Placeholder if empty */}
                             {groupedTemplates.length === 0 && (
                                 <div className="w-full py-12 text-center text-[#525252] font-black uppercase tracking-widest text-[10px] bg-[#0A0A0A] border-2 border-dashed border-[#171717] rounded-3xl">
                                     No routines created yet
@@ -417,6 +511,27 @@ export default function RoutinesPage() {
                 onChange={setImportJson}
                 onImport={handleImportRoutine}
             />
+
+            <EditRoutineModal
+                isOpen={!!editingRoutine}
+                initialData={editingRoutine}
+                onClose={() => setEditingRoutine(null)}
+                onSave={handleEditRoutine}
+                isSaving={isRoutineOp}
+            />
+
+            <DeleteRoutineModal
+                isOpen={!!deletingRoutine}
+                routineData={deletingRoutine}
+                onClose={() => setDeletingRoutine(null)}
+                onConfirm={handleDeleteRoutine}
+                isDeleting={isRoutineOp}
+            />
+
+            {/* Dismiss menu on outside click */}
+            {activeMenuId && (
+                <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
+            )}
         </div>
     );
 }
@@ -485,13 +600,13 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData, isSaving
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
+                <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center pointer-events-auto">
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+                        className="absolute inset-0 bg-black/80 backdrop-blur-md"
                     />
 
                     <motion.div
@@ -499,7 +614,7 @@ function ProfileCreationModal({ isOpen, onClose, onSubmit, initialData, isSaving
                         animate={{ y: 0, opacity: 1 }}
                         exit={{ y: "100%", opacity: 0 }}
                         transition={{ type: "spring", damping: 25, stiffness: 200 }}
-                        className="w-full max-w-lg bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border sm:border-y sm:border-x border-t border-[#171717] overflow-hidden flex flex-col relative z-10 max-h-[90vh]"
+                        className="w-full max-w-lg bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border-t sm:border border-[#171717] overflow-hidden flex flex-col relative z-10 max-h-[90vh]"
                     >
                         <div className="flex items-center justify-between p-6 border-b border-[#171717]">
                             <div>
@@ -630,8 +745,8 @@ function PromptDisplayModal({ isOpen, onClose, prompt, onCopy, isCopying }) {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+                <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -667,8 +782,8 @@ function ImportRoutineModal({ isOpen, onClose, value, onChange, onImport }) {
     return (
         <AnimatePresence>
             {isOpen && (
-                <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+                <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
                     <motion.div
                         initial={{ scale: 0.9, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
@@ -695,6 +810,144 @@ function ImportRoutineModal({ isOpen, onClose, value, onChange, onImport }) {
                                 className="w-full h-14 bg-white text-black font-black uppercase tracking-widest rounded-2xl flex items-center justify-center disabled:opacity-50"
                             >
                                 Add to Library
+                            </button>
+                        </div>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+    );
+}
+
+function EditRoutineModal({ isOpen, initialData, onClose, onSave, isSaving }) {
+    const [formData, setFormData] = useState({ split: '', mesocycle: '' });
+
+    useEffect(() => {
+        if (initialData) {
+            setFormData({ split: initialData.split || '', mesocycle: initialData.mesocycle || '' });
+        }
+    }, [initialData, isOpen]);
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        onSave(formData);
+    };
+
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[150] flex items-end sm:items-center justify-center pointer-events-auto">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+                    />
+                    <motion.div
+                        initial={{ y: '100%', opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: '100%', opacity: 0 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="w-full max-w-lg bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border-t sm:border border-[#171717] overflow-hidden flex flex-col relative z-10"
+                    >
+                        <div className="flex items-center justify-between p-6 border-b border-[#171717]">
+                            <div>
+                                <h3 className="text-xl font-black tracking-tighter uppercase">Edit Routine</h3>
+                                <p className="text-[10px] font-bold text-brand-500 uppercase tracking-widest mt-0.5">Rename</p>
+                            </div>
+                            <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-widest mb-2">Split Name</label>
+                                <input
+                                    type="text"
+                                    value={formData.split}
+                                    onChange={(e) => setFormData({ ...formData, split: e.target.value })}
+                                    placeholder="e.g. Push A, Upper, Full Body"
+                                    className="w-full bg-[#171717] border border-[#262626] rounded-2xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-brand-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-[#A3A3A3] uppercase tracking-widest mb-2">Mesocycle</label>
+                                <input
+                                    type="text"
+                                    value={formData.mesocycle}
+                                    onChange={(e) => setFormData({ ...formData, mesocycle: e.target.value })}
+                                    placeholder="e.g. Meso 1 - Week 2"
+                                    className="w-full bg-[#171717] border border-[#262626] rounded-2xl px-4 py-3 text-white text-sm font-bold focus:outline-none focus:border-brand-500"
+                                />
+                            </div>
+                            <button
+                                type="submit"
+                                disabled={isSaving || !formData.split || !formData.mesocycle}
+                                className="w-full mt-2 h-14 bg-white text-black font-black uppercase tracking-[0.2em] text-sm rounded-2xl flex items-center justify-center hover:bg-brand-500 hover:text-black transition-colors disabled:opacity-50"
+                            >
+                                {isSaving ? (
+                                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                                        <Activity className="w-5 h-5" />
+                                    </motion.div>
+                                ) : 'Save Changes'}
+                            </button>
+                        </form>
+                    </motion.div>
+                </div>
+            )}
+        </AnimatePresence>
+    );
+}
+
+function DeleteRoutineModal({ isOpen, routineData, onClose, onConfirm, isDeleting }) {
+    return (
+        <AnimatePresence>
+            {isOpen && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center p-6">
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={onClose}
+                        className="absolute inset-0 bg-black/90 backdrop-blur-md"
+                    />
+                    <motion.div
+                        initial={{ scale: 0.9, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.9, opacity: 0 }}
+                        className="w-full max-w-sm bg-[#171717] rounded-[3rem] p-8 flex flex-col items-center text-center relative z-10 shadow-2xl border border-white/5"
+                    >
+                        {/* Top Icon */}
+                        <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mb-6">
+                            <Trash2 className="w-8 h-8 text-red-500" />
+                        </div>
+
+                        <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-3">
+                            Delete Routine?
+                        </h3>
+                        <p className="text-sm text-[#A3A3A3] font-medium leading-relaxed mb-8 px-2">
+                            Are you sure you want to remove <span className="text-white font-bold">{routineData?.split}</span>? All associated data will be permanently lost.
+                        </p>
+
+                        <div className="w-full space-y-3">
+                            <button
+                                onClick={onConfirm}
+                                disabled={isDeleting}
+                                className="w-full h-16 bg-[#FF4B4B] text-white font-black uppercase tracking-widest text-sm rounded-2xl hover:bg-red-600 transition-all active:scale-[0.98] flex items-center justify-center"
+                            >
+                                {isDeleting ? (
+                                    <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}>
+                                        <Activity className="w-6 h-6" />
+                                    </motion.div>
+                                ) : 'Delete Routine'}
+                            </button>
+                            <button
+                                onClick={onClose}
+                                className="w-full h-16 bg-[#262626] text-white font-black uppercase tracking-widest text-sm rounded-2xl hover:bg-[#333333] transition-all active:scale-[0.98]"
+                            >
+                                Keep Library
                             </button>
                         </div>
                     </motion.div>

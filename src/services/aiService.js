@@ -229,11 +229,10 @@ export async function generateWorkoutMock(profile, summary) {
 /**
  * generateAIPrompt
  * Aggregates all context into a single prompt for the user to copy/paste into an AI service.
+ * Includes both weightlifting logs and functional/conditioning logs for full training load awareness.
  */
 export async function generateAIPrompt(profile, summary, userId) {
     if (!profile || !userId) return "Error: Profile and User ID required.";
-
-    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || 'PENDING_CONFIG';
 
     // 1. Fetch Master Exercise List for ID Mapping
     const { data: exerciseList } = await supabase
@@ -245,11 +244,12 @@ export async function generateAIPrompt(profile, summary, userId) {
         ? exerciseList.map(ex => `- ID:${ex.id} | ${ex.name} (${ex.target_muscle})`).join('\n')
         : "No master exercises found.";
 
-    // 2. Fetch last 30 days of logs for context
+    // 2. Date range: last 30 days
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
     const dateStr = thirtyDaysAgo.toISOString().split('T')[0];
 
+    // 3. Weightlifting logs
     const { data: logs } = await supabase
         .schema('workout_tracker')
         .from('workout_logs')
@@ -260,7 +260,28 @@ export async function generateAIPrompt(profile, summary, userId) {
 
     const logsText = logs && logs.length > 0
         ? logs.map(l => `- ${l.date} [${l.session_type}]: ${l.exercise} (${l.sets}x${l.reps} @ ${l.kg}kg, RPE:${l.rpe})`).join('\n')
-        : "No recent workout logs found.";
+        : "No recent weightlifting logs found.";
+
+    // 4. Functional / Conditioning logs (circuits, EMOM, AMRAP, Hyrox, etc.)
+    const { data: functionalLogs } = await supabase
+        .schema('workout_tracker')
+        .from('functional_logs')
+        .select('date, session_type, exercise, duration_seconds, splits, notes')
+        .eq('user_id', userId)
+        .gte('date', dateStr)
+        .order('date', { ascending: false });
+
+    const conditioningText = functionalLogs && functionalLogs.length > 0
+        ? functionalLogs.map(f => {
+            const durationMin = f.duration_seconds
+                ? `${Math.floor(f.duration_seconds / 60)}:${String(f.duration_seconds % 60).padStart(2, '0')}`
+                : 'N/A';
+            const splitsDetail = Array.isArray(f.splits) && f.splits.length > 0
+                ? f.splits.map(s => s.title || s.exercise || '?').join(' / ')
+                : (f.exercise || 'General Conditioning');
+            return `- ${f.date} [${f.session_type} | ${durationMin}]: ${splitsDetail}${f.notes ? ` — ${f.notes}` : ''}`;
+        }).join('\n')
+        : "No recent conditioning/circuit logs found.";
 
     const prompt = `
 [SYSTEM INSTRUCTIONS]
@@ -300,22 +321,26 @@ ${exercisesContext}
 - Training Concepts: ${profile.notes || 'None'}
 
 [TRAINING DATA (Last 30 Days)]
-- Frequency: ${summary.weekly_frequency} sessions/week
-- Avg RPE: ${summary.avg_rpe}
+- Combined Frequency: ${summary.weekly_frequency} sessions/week (weightlifting + conditioning)
+- Avg RPE (Weightlifting): ${summary.avg_rpe}
 - Recovery Status: ${summary.recovery_status}
 - Last Muscles Worked: ${summary.last_muscles_worked?.join(', ') || 'None'}
 
-[HISTORY LOGS]
+[WEIGHTLIFTING HISTORY LOGS]
 ${logsText}
 
+[CONDITIONING HISTORY (Circuits / EMOM / AMRAP / Hyrox)]
+${conditioningText}
+
 [TRAINING RULES & LOGIC]
-1. PROGRESSION: If history shows all sets reached the top of the rep range (e.g., 10-10-10 in an 8-10 range), increase load (kg) by 1-2.5kg for the next session.
-2. CONSISTENCY: Do not repeat the same "Main Lift" (first exercise of the session) for more than 2 consecutive sessions. Rotate variations if needed.
-3. REST TIMES: Specify rest times in 'notes' (e.g., "Rest 3m" for compounds, "Rest 60-90s" for isolations).
-4. TEMPO: Enforce lengthened-bias tempo (e.g., 3-0-1-0 or slow eccentrics) in 'notes'.
-5. TIME CONSTRAINT: Total session duration must be <= 60 minutes.
-6. RPE PROGRESSION: Scale RPE across sets (e.g., Set 1: RPE 7, Final Set: RPE 9-10/AMRAP).
-7. PERIODIZATION: Be explicit in the "mesocycle" name about which week of the block we are in (e.g., "Meso 1 - Week 1").
+1. TOTAL LOAD AWARENESS: Account for BOTH weightlifting and conditioning sessions when estimating fatigue and planning progression. High conditioning volume should reduce weightlifting intensity on the same day or following day.
+2. PROGRESSION: If history shows all sets reached the top of the rep range (e.g., 10-10-10 in an 8-10 range), increase load (kg) by 1-2.5kg for the next session.
+3. CONSISTENCY: Do not repeat the same "Main Lift" (first exercise of the session) for more than 2 consecutive sessions. Rotate variations if needed.
+4. REST TIMES: Specify rest times in 'notes' (e.g., "Rest 3m" for compounds, "Rest 60-90s" for isolations).
+5. TEMPO: Enforce lengthened-bias tempo (e.g., 3-0-1-0 or slow eccentrics) in 'notes'.
+6. TIME CONSTRAINT: Total session duration must be <= 60 minutes.
+7. RPE PROGRESSION: Scale RPE across sets (e.g., Set 1: RPE 7, Final Set: RPE 9-10/AMRAP).
+8. PERIODIZATION: Be explicit in the "mesocycle" name about which week of the block we are in (e.g., "Meso 1 - Week 1").
 
 [MISSION]
 Design the perfect NEXT workout session(s). You can generate multiple routines if it makes sense for a full split.
@@ -346,7 +371,6 @@ You MUST return a JSON array of workout objects. Each object contains:
 
 CRITICAL: Return ONLY the JSON object. No explanations, no markdown blocks.
 `;
-
 
     return prompt;
 }

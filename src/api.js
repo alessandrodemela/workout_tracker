@@ -320,6 +320,35 @@ export const markRoutineInactive = async (routineId) => {
     return { status: 'success' };
 };
 
+export const updateRoutineMeta = async (routineId, { split, mesocycle }) => {
+    const { error } = await supabase
+        .schema('workout_tracker')
+        .from('routine_templates')
+        .update({ split, mesocycle })
+        .eq('id', routineId);
+    if (error) throw error;
+    return { status: 'success' };
+};
+
+export const deleteRoutine = async (routineId) => {
+    // Delete child exercises first to avoid FK violations
+    const { error: exErr } = await supabase
+        .schema('workout_tracker')
+        .from('routine_exercises')
+        .delete()
+        .eq('routine_id', routineId);
+    if (exErr) throw exErr;
+
+    const { error: tmplErr } = await supabase
+        .schema('workout_tracker')
+        .from('routine_templates')
+        .delete()
+        .eq('id', routineId);
+    if (tmplErr) throw tmplErr;
+
+    return { status: 'success' };
+};
+
 // Profile
 export const getUserProfile = async (userId) => {
     const { data, error } = await supabase.from('user_profiles').select('*').eq('user_id', userId).single();

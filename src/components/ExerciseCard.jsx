@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Info, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import SetRow from './SetRow';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
     const [collapsed, setCollapsed] = useState(false);
+    const [showNotes, setShowNotes] = useState(false);
     const { setIsRestTimerExpanded, restTimer, startRestTimer } = useWorkout();
 
     const handleAddSet = () => {
@@ -50,7 +52,12 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
                     <span className="flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-brand-500 bg-brand-500/10 px-2 py-1 rounded-full">
                         {index + 1}
                     </span>
-                    <h3 className="text-base font-bold text-white truncate">{exercise.name}</h3>
+                    <h3 className="text-base font-bold text-white truncate max-w-[200px]">{exercise.name}</h3>
+                    {exercise.notes && (
+                        <button onClick={() => setShowNotes(true)} className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 hover:bg-brand-500 hover:text-black transition-colors" title="View Notes">
+                            <Info className="w-3.5 h-3.5" />
+                        </button>
+                    )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={onRemove} className="text-[#A3A3A3] hover:text-brand-500 text-[10px] font-bold uppercase tracking-widest">
@@ -92,6 +99,35 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
                     </button>
                 </div>
             )}
+
+            <AnimatePresence>
+                {showNotes && (
+                    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+                        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowNotes(false)} className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            className="w-full max-w-sm bg-[#0A0A0A] border border-[#171717] rounded-3xl overflow-hidden flex flex-col relative z-10"
+                        >
+                            <div className="p-5 border-b border-[#171717] flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-black uppercase tracking-tighter text-white">Exercise Notes</h3>
+                                    <p className="text-[10px] font-bold text-brand-500 uppercase tracking-widest mt-0.5">{exercise.name}</p>
+                                </div>
+                                <button onClick={() => setShowNotes(false)} className="w-8 h-8 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
+                                    <X className="w-4 h-4" />
+                                </button>
+                            </div>
+                            <div className="p-5 bg-black">
+                                <p className="text-sm font-medium text-[#A3A3A3] whitespace-pre-wrap leading-relaxed">
+                                    {exercise.notes}
+                                </p>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 }
