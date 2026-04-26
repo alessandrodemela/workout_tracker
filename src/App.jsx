@@ -57,9 +57,9 @@ function AppContent() {
             <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-6 transition-all duration-300 ${
                 showNav 
                     ? `pb-[calc(env(safe-area-inset-bottom,20px)+${
-                        96 + (
-                            ((isActive && location.pathname !== '/workout' && (location.pathname !== '/conditioning' || !activeTimerMode)) ? 84 : 0) +
-                            ((isTimerActive && (!activeTimerMode || location.pathname !== '/conditioning')) ? 84 : 0)
+                        110 + (
+                            ((isActive && location.pathname !== '/workout' && (location.pathname !== '/conditioning' || !activeTimerMode)) ? 100 : 0) +
+                            ((isTimerActive && (!activeTimerMode || location.pathname !== '/conditioning')) ? 100 : 0)
                         )
                     }px)]` 
                     : 'pb-0'
@@ -82,7 +82,7 @@ function AppContent() {
             </main>
 
             {/* Floating banners above nav */}
-            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,20px)+84px)] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
+            <div className="fixed bottom-[calc(env(safe-area-inset-bottom,20px)+100px)] left-0 right-0 px-4 flex flex-col items-center gap-2 pointer-events-none z-40">
                 {isActive && location.pathname !== '/workout' && (location.pathname !== '/conditioning' || !activeTimerMode) && <ResumeWorkoutBanner />}
                 {isTimerActive && !activeTimerMode && <ResumeTimerBanner />}
                 {isTimerActive && activeTimerMode && location.pathname !== '/conditioning' && <ResumeTimerBanner />}

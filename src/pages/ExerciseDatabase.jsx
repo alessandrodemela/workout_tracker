@@ -461,10 +461,10 @@ export default function ExerciseDatabase() {
                     onClick={() => setIsAdding(true)}
                     className={`fixed right-6 w-16 h-16 bg-brand-500 rounded-2xl text-black flex items-center justify-center shadow-[0_12px_40px_rgba(212,255,0,0.3)] z-40 hover:scale-110 active:scale-95 transition-all group border-b-4 border-black/20 ${
                         (isActive && isTimerActive)
-                            ? 'bottom-[calc(env(safe-area-inset-bottom,20px)+260px)]'
+                            ? 'bottom-[calc(env(safe-area-inset-bottom,20px)+310px)]'
                             : (isActive || isTimerActive)
-                            ? 'bottom-[calc(env(safe-area-inset-bottom,20px)+180px)]'
-                            : 'bottom-[calc(env(safe-area-inset-bottom,20px)+100px)]'
+                            ? 'bottom-[calc(env(safe-area-inset-bottom,20px)+210px)]'
+                            : 'bottom-[calc(env(safe-area-inset-bottom,20px)+120px)]'
                     }`}
                 >
                     <Plus className="w-8 h-8 group-hover:rotate-90 transition-transform duration-300" strokeWidth={3} />

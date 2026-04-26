@@ -25,7 +25,7 @@ export default function RestTimer() {
         return (
             <button
                 onClick={() => setIsRestTimerExpanded(true)}
-                className={`fixed bottom-36 right-6 h-14 bg-[#171717] border border-[#262626] rounded-full flex items-center justify-center text-[#A3A3A3] shadow-2xl z-50 transition-all duration-300 ${restTimer.isActive ? 'px-4 gap-2 w-auto border-brand-500/50' : 'w-14'}`}
+                className={`fixed bottom-[240px] right-6 h-14 bg-[#171717] border border-[#262626] rounded-full flex items-center justify-center text-[#A3A3A3] shadow-2xl z-50 transition-all duration-300 ${restTimer.isActive ? 'px-4 gap-2 w-auto border-brand-500/50' : 'w-14'}`}
             >
                 {restTimer.isActive ? (
                     <>
@@ -40,7 +40,7 @@ export default function RestTimer() {
     }
 
     return (
-        <div className={`fixed bottom-36 left-6 right-6 z-50 max-w-lg mx-auto transition-all duration-300 transform ${isRestTimerExpanded ? 'scale-100 opacity-100' : 'scale-95 opacity-100'}`}>
+        <div className={`fixed bottom-[240px] left-6 right-6 z-50 max-w-lg mx-auto transition-all duration-300 transform ${isRestTimerExpanded ? 'scale-100 opacity-100' : 'scale-95 opacity-100'}`}>
             <div className="card-glass border-[#262626] shadow-[0_20px_50px_rgba(0,0,0,0.5)] p-4 flex flex-col gap-4 overflow-hidden">
 
                 {/* Header */}
