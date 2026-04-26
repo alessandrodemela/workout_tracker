@@ -129,7 +129,6 @@ export const getTemplates = async () => {
                     )
                 )
             `)
-            .or('is_active.eq.true,is_active.is.null')
             .order('block_number', { ascending: true });
 
         if (relError) {
@@ -154,7 +153,8 @@ export const getTemplates = async () => {
                     Sets: ex.sets,
                     Reps: ex.reps,
                     RPE: ex.rpe,
-                    Notes: ex.notes
+                    Notes: ex.notes,
+                    Is_Active: head.is_active !== false
                 });
             });
         });

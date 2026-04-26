@@ -49,6 +49,7 @@ export default function ActiveWorkout() {
 
     // Add exercise dropdown state
     const [isAddingExercise, setIsAddingExercise] = useState(false);
+    const [substitutingIndex, setSubstitutingIndex] = useState(null);
     const [exerciseSearch, setExerciseSearch] = useState('');
 
     const filteredMaster = useMemo(() => {
@@ -59,7 +60,12 @@ export default function ActiveWorkout() {
     }, [masterExercises, exerciseSearch]);
 
     const addExerciseToLog = (name, isFunctional) => {
-        if (isFunctional) {
+        if (substitutingIndex !== null) {
+            const newExs = [...exercises];
+            newExs[substitutingIndex] = { ...newExs[substitutingIndex], name };
+            setExercises(newExs);
+            setSubstitutingIndex(null);
+        } else if (isFunctional) {
             setExercises([...exercises, { name, sets: [] }]);
         } else {
             setExercises([...exercises, { name, sets: [{ kg: '', reps: '', rpe: 8, completed: false }] }]);
@@ -305,6 +311,7 @@ export default function ActiveWorkout() {
             setIsSaving(false);
             setIsSaved(true);
             await mutate(`${API_URL}/workout-history`);
+            await mutate('/templates');
             
             setTimeout(() => {
                 try {
@@ -437,7 +444,7 @@ export default function ActiveWorkout() {
     }
 
     return (
-        <div className="flex flex-col gap-6 pb-6 animate-fade-in pt-6">
+        <div className="flex flex-col gap-6 pb-32 animate-fade-in pt-6">
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
                     <button onClick={() => navigate('/home')} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
@@ -524,8 +531,8 @@ export default function ActiveWorkout() {
                     {isAddingExercise ? (
                         <div className="card-glass flex flex-col gap-4 animate-slide-up">
                             <div className="flex justify-between items-center">
-                                <h3 className="text-sm font-bold">Add Movement</h3>
-                                <button onClick={() => { setIsAddingExercise(false); setExerciseSearch(''); }} className="text-[#A3A3A3] text-xs">Cancel</button>
+                                <h3 className="text-sm font-bold">{substitutingIndex !== null ? 'Substitute Movement' : 'Add Movement'}</h3>
+                                <button onClick={() => { setIsAddingExercise(false); setExerciseSearch(''); setSubstitutingIndex(null); }} className="text-[#A3A3A3] text-xs">Cancel</button>
                             </div>
                             <input
                                 autoFocus
@@ -566,14 +573,17 @@ export default function ActiveWorkout() {
                             const newExs = [...exercises];
                             newExs[idx] = u;
                             setExercises(newExs);
-                        }} onRemove={() => setExercises(exercises.filter((_, i) => i !== idx))} />
+                        }} onRemove={() => setExercises(exercises.filter((_, i) => i !== idx))} onSubstitute={() => {
+                            setSubstitutingIndex(idx);
+                            setIsAddingExercise(true);
+                        }} />
                     ))}
 
                     {isAddingExercise ? (
                         <div className="card-glass flex flex-col gap-4 animate-slide-up">
                             <div className="flex justify-between items-center">
-                                <h3 className="text-sm font-bold">Add Movement</h3>
-                                <button onClick={() => { setIsAddingExercise(false); setExerciseSearch(''); }} className="text-[#A3A3A3] text-xs">Cancel</button>
+                                <h3 className="text-sm font-bold">{substitutingIndex !== null ? 'Substitute Exercise' : 'Add Movement'}</h3>
+                                <button onClick={() => { setIsAddingExercise(false); setExerciseSearch(''); setSubstitutingIndex(null); }} className="text-[#A3A3A3] text-xs">Cancel</button>
                             </div>
                             <input
                                 autoFocus

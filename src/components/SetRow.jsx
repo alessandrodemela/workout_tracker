@@ -11,7 +11,9 @@ export default function SetRow({ index, row, onRowChange, onRemove, onToggleComp
             <div className="flex-1 grid grid-cols-2 gap-2">
                 <div className="relative">
                     <input
-                        type="text"
+                        type="number"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
                         value={row.reps}
                         onChange={e => {
                             onRowChange('reps', e.target.value);

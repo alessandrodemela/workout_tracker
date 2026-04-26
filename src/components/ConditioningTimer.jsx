@@ -309,7 +309,7 @@ export default function ConditioningTimer({ onClose }) {
                 </div>
 
                 {/* Sticky Start button */}
-                <div className="flex-shrink-0 py-4 border-t border-[#262626]">
+                <div className="flex-shrink-0 py-4 pb-20 border-t border-[#262626]">
                     {!isSequenceValid ? (
                         <button
                             disabled
@@ -428,7 +428,7 @@ export default function ConditioningTimer({ onClose }) {
             )}
 
             {/* Controls */}
-            <div className="flex items-center justify-center gap-6 flex-shrink-0 pb-[80px]">
+            <div className="flex items-center justify-center gap-6 flex-shrink-0 pb-[120px]">
                 {phase !== 'Done' ? (
                     <>
                         <button

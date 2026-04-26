@@ -58,8 +58,8 @@ export default function RoutinesPage() {
 
     const hasProfile = profile && profile.goal;
 
-    const groupedTemplates = React.useMemo(() => {
-        if (!templatesResp?.templates) return [];
+    const { activeRoutines, pastRoutines } = React.useMemo(() => {
+        if (!templatesResp?.templates) return { activeRoutines: [], pastRoutines: [] };
         const groups = {};
         templatesResp.templates.forEach(t => {
             // Handle both legacy (flat) and new (joined) table structures
@@ -84,23 +84,30 @@ export default function RoutinesPage() {
                     mesocycle: mName,
                     split: sName,
                     exercises: [],
+                    isActive: t.Is_Active !== false,
                     isCompleted: isDone
                 };
             }
             groups[key].exercises.push(t);
         });
 
-        // Find the first routine that is NOT completed to be the highlighted one
-        const allRoutines = Object.values(groups).sort((a, b) => (a.block - b.block) || a.mesocycle.localeCompare(b.mesocycle));
-        const firstPendingIdx = allRoutines.findIndex(r => !r.isCompleted);
+        // Split active and past
+        const allRoutines = Object.values(groups);
+        const active = allRoutines.filter(r => r.isActive).sort((a, b) => (a.block - b.block) || a.mesocycle.localeCompare(b.mesocycle));
+        const past = allRoutines.filter(r => !r.isActive).sort((a, b) => (b.block - a.block) || a.mesocycle.localeCompare(b.mesocycle));
 
-        return allRoutines.map((r, i) => ({
+        // Find the first routine that is NOT completed to be the highlighted one in active
+        const firstPendingIdx = active.findIndex(r => !r.isCompleted);
+
+        const activeMapped = active.map((r, i) => ({
             ...r,
             isRecommended: i === (firstPendingIdx === -1 ? 0 : firstPendingIdx)
         }));
+        
+        return { activeRoutines: activeMapped, pastRoutines: past };
     }, [templatesResp, historyData]);
 
-    console.log('🔄 RoutinesPage render', { isProfileLoading, isSummaryLoading, hasProfile, templatesCount: groupedTemplates.length });
+    console.log('🔄 RoutinesPage render', { isProfileLoading, isSummaryLoading, hasProfile, templatesCount: activeRoutines.length + pastRoutines.length });
 
     const { data: mockWorkout, isLoading: isGeneratingMock } = useSWR(
         hasProfile && summary ? ['workout-mock', user.id] : null,
@@ -275,7 +282,7 @@ export default function RoutinesPage() {
                         </div>
 
                         <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
-                            {groupedTemplates.map((group, idx) => (
+                            {activeRoutines.map((group, idx) => (
                                 <motion.div
                                     key={group.id}
                                     whileTap={{ scale: activeMenuId ? 1 : 0.98 }}
@@ -384,9 +391,9 @@ export default function RoutinesPage() {
                             ))}
 
                             {/* Placeholder if empty */}
-                            {groupedTemplates.length === 0 && (
+                            {activeRoutines.length === 0 && (
                                 <div className="w-full py-12 text-center text-[#525252] font-black uppercase tracking-widest text-[10px] bg-[#0A0A0A] border-2 border-dashed border-[#171717] rounded-3xl">
-                                    No routines created yet
+                                    No active routines
                                 </div>
                             )}
                         </div>
@@ -422,7 +429,7 @@ export default function RoutinesPage() {
                     </div>
 
                     {/* Saved Library (Vertical List if many, but we'll focus on the Hero) */}
-                    {groupedTemplates.length > 3 && (
+                    {activeRoutines.length > 3 && (
                         <div className="flex flex-col gap-4 mt-2">
                             <div className="flex items-center justify-between px-2">
                                 <div className="flex items-center gap-2">
@@ -430,12 +437,12 @@ export default function RoutinesPage() {
                                     <span className="text-sm font-bold text-[#A3A3A3] uppercase tracking-widest">Library</span>
                                 </div>
                                 <span className="text-[10px] font-black text-brand-500 bg-brand-500/10 px-2 py-0.5 rounded-full uppercase tracking-widest">
-                                    {groupedTemplates.length} Plans
+                                    {activeRoutines.length} Plans
                                 </span>
                             </div>
 
                             <div className="grid grid-cols-1 gap-3">
-                                {groupedTemplates.map((group) => (
+                                {activeRoutines.map((group) => (
                                     <motion.div
                                         key={group.id}
                                         whileTap={{ scale: 0.98 }}
@@ -461,6 +468,96 @@ export default function RoutinesPage() {
                                         </div>
 
                                         <div className="flex flex-wrap gap-x-2 gap-y-1 relative z-10">
+                                            {group.exercises.slice(0, 5).map((ex, i) => (
+                                                <span key={i} className="text-[10px] font-bold text-[#525252] flex items-center">
+                                                    {ex.Exercise_Name}
+                                                    {i < Math.min(group.exercises.length, 5) - 1 && <span className="ml-2 text-brand-500/30 opacity-50">•</span>}
+                                                </span>
+                                            ))}
+                                            {group.exercises.length > 5 && (
+                                                <span className="text-[10px] font-bold text-brand-500/50">+ {group.exercises.length - 5} more</span>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Past Routines */}
+                    {pastRoutines.length > 0 && (
+                        <div className="flex flex-col gap-4 mt-2">
+                            <div className="flex items-center justify-between px-2">
+                                <div className="flex items-center gap-2">
+                                    <CheckCircle className="w-4 h-4 text-[#A3A3A3]" />
+                                    <span className="text-sm font-bold text-[#A3A3A3] uppercase tracking-widest">Past Routines</span>
+                                </div>
+                                <span className="text-[10px] font-black text-[#A3A3A3] bg-[#171717] px-2 py-0.5 rounded-full uppercase tracking-widest">
+                                    {pastRoutines.length} Completed
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-3">
+                                {pastRoutines.map((group) => (
+                                    <motion.div
+                                        key={group.id}
+                                        whileTap={{ scale: 0.98 }}
+                                        onClick={() => handleStartStoredRoutine(group)}
+                                        className="bg-[#0A0A0A] border border-[#171717] rounded-3xl p-5 hover:border-brand-500/30 transition-all cursor-pointer group relative overflow-hidden"
+                                    >
+                                        <div className="absolute top-0 right-0 p-4 opacity-[0.03] group-hover:opacity-[0.05] transition-opacity">
+                                            <CheckCircle className="w-12 h-12 text-white" />
+                                        </div>
+
+                                        <div className="flex items-center justify-between mb-3 relative z-10">
+                                            <div>
+                                                <h4 className="text-lg font-black text-[#A3A3A3] uppercase tracking-tighter group-hover:text-white transition-colors">
+                                                    {group.split}
+                                                </h4>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black text-[#525252] uppercase tracking-[0.2em]">{group.mesocycle} • BLOCK {group.block}</span>
+                                                </div>
+                                            </div>
+                                            
+                                            {/* ⋯ Menu Button for Past routines */}
+                                            <div className="relative">
+                                                <button
+                                                    onClick={(e) => { 
+                                                        e.stopPropagation(); 
+                                                        setActiveMenuId(activeMenuId === group.id ? null : group.id); 
+                                                    }}
+                                                    className="w-8 h-8 rounded-full flex items-center justify-center transition-colors shadow-lg bg-[#171717] hover:bg-[#262626] text-[#A3A3A3] hover:text-white border border-white/5"
+                                                >
+                                                    <MoreHorizontal className="w-4 h-4" />
+                                                </button>
+
+                                                <AnimatePresence>
+                                                    {activeMenuId === group.id && (
+                                                        <motion.div
+                                                            initial={{ opacity: 0, scale: 0.9, y: -4 }}
+                                                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                                                            exit={{ opacity: 0, scale: 0.9, y: -4 }}
+                                                            transition={{ duration: 0.15 }}
+                                                            className="absolute right-0 top-10 z-[70] bg-[#121212] border border-[#262626] rounded-2xl overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-w-[150px]"
+                                                        >
+                                                            <button
+                                                                onClick={(e) => { 
+                                                                    e.stopPropagation(); 
+                                                                    setActiveMenuId(null); 
+                                                                    setDeletingRoutine({ routineId: group.routineId, split: group.split }); 
+                                                                }}
+                                                                className="flex items-center gap-3 w-full px-5 py-4 text-xs font-bold text-red-400 hover:bg-[#171717] transition-colors"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                                Delete
+                                                            </button>
+                                                        </motion.div>
+                                                    )}
+                                                </AnimatePresence>
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap gap-x-2 gap-y-1 relative z-10 opacity-70">
                                             {group.exercises.slice(0, 5).map((ex, i) => (
                                                 <span key={i} className="text-[10px] font-bold text-[#525252] flex items-center">
                                                     {ex.Exercise_Name}

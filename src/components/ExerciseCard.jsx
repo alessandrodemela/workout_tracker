@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronUp, Plus, Info, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Plus, Info, X, MoreHorizontal, FileText, ArrowRightLeft, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SetRow from './SetRow';
 import { useWorkout } from '../context/WorkoutContext';
 
-export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
+export default function ExerciseCard({ exercise, index, onUpdate, onRemove, onSubstitute }) {
     const [collapsed, setCollapsed] = useState(false);
     const [showNotes, setShowNotes] = useState(false);
+    const [showMenu, setShowMenu] = useState(false);
     const { setIsRestTimerExpanded, restTimer, startRestTimer } = useWorkout();
 
     const handleAddSet = () => {
@@ -53,16 +54,44 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove }) {
                         {index + 1}
                     </span>
                     <h3 className="text-base font-bold text-white truncate max-w-[200px]">{exercise.name}</h3>
-                    {exercise.notes && (
-                        <button onClick={() => setShowNotes(true)} className="flex-shrink-0 w-6 h-6 rounded-full bg-brand-500/10 flex items-center justify-center text-brand-500 hover:bg-brand-500 hover:text-black transition-colors" title="View Notes">
-                            <Info className="w-3.5 h-3.5" />
-                        </button>
-                    )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
-                    <button onClick={onRemove} className="text-[#A3A3A3] hover:text-brand-500 text-[10px] font-bold uppercase tracking-widest">
-                        Remove
-                    </button>
+                    <div className="relative">
+                        <button onClick={() => setShowMenu(true)} className="p-1 text-[#A3A3A3] hover:text-white rounded-full">
+                            <MoreHorizontal className="w-5 h-5" />
+                        </button>
+                        
+                        <AnimatePresence>
+                            {showMenu && (
+                                <>
+                                    <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                                    <motion.div
+                                        initial={{ opacity: 0, scale: 0.95 }}
+                                        animate={{ opacity: 1, scale: 1 }}
+                                        exit={{ opacity: 0, scale: 0.95 }}
+                                        className="absolute right-0 top-full mt-2 w-48 bg-[#171717] border border-[#262626] rounded-2xl shadow-2xl z-50 flex flex-col overflow-hidden py-1"
+                                    >
+                                        {exercise.notes && (
+                                            <button onClick={() => { setShowNotes(true); setShowMenu(false); }} className="px-4 py-3 text-sm text-left font-bold text-white hover:bg-[#262626] flex items-center gap-3 transition-colors">
+                                                <FileText className="w-4 h-4 text-brand-500" />
+                                                View Notes
+                                            </button>
+                                        )}
+                                        {onSubstitute && (
+                                            <button onClick={() => { onSubstitute(); setShowMenu(false); }} className="px-4 py-3 text-sm text-left font-bold text-white hover:bg-[#262626] flex items-center gap-3 transition-colors">
+                                                <ArrowRightLeft className="w-4 h-4 text-blue-400" />
+                                                Substitute
+                                            </button>
+                                        )}
+                                        <button onClick={() => { onRemove(); setShowMenu(false); }} className="px-4 py-3 text-sm text-left font-bold text-red-500 hover:bg-[#262626] flex items-center gap-3 transition-colors">
+                                            <Trash2 className="w-4 h-4" />
+                                            Remove
+                                        </button>
+                                    </motion.div>
+                                </>
+                            )}
+                        </AnimatePresence>
+                    </div>
                     <button onClick={() => setCollapsed(!collapsed)} className="p-1 text-[#A3A3A3] hover:text-white">
                         {collapsed ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
                     </button>

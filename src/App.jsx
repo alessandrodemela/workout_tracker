@@ -54,7 +54,7 @@ function AppContent() {
             )}
 
             {/* Scrollable page content — sits above the fixed nav */}
-            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-16 transition-all duration-300 ${
+            <main className={`flex-1 w-full max-w-lg mx-auto px-6 overflow-y-auto flex flex-col pt-6 transition-all duration-300 ${
                 showNav 
                     ? `pb-[calc(env(safe-area-inset-bottom,20px)+${
                         96 + (
