@@ -228,7 +228,7 @@ export default function RoutinesPage() {
 
 
     return (
-        <div className="flex-1 flex flex-col pb-20">
+        <div className="flex flex-col pb-40">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
                 <div>

@@ -45,7 +45,7 @@ function AppContent() {
     }
 
     return (
-        <div className="h-dvh flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30 overflow-hidden relative">
+        <div className="h-[100dvh] flex flex-col font-sans bg-[#000000] text-[#FAFAFA] selection:bg-brand-500/30 overflow-hidden relative">
             {/* Global User Menu - Top Right */}
             {showNav && user && location.pathname !== '/workout' && location.pathname !== '/profile' && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-lg z-50 pointer-events-none">
@@ -68,11 +68,7 @@ function AppContent() {
                     <Route path="/" element={<LandingScreen />} />
                     <Route path="/home" element={<HomeDashboard />} />
                     <Route path="/workout" element={<ActiveWorkout />} />
-                    <Route path="/conditioning" element={
-                        <div className="flex-1 flex flex-col">
-                            <ConditioningScreen />
-                        </div>
-                    } />
+                    <Route path="/conditioning" element={<ConditioningScreen />} />
                     <Route path="/routines" element={<RoutinesPage />} />
                     <Route path="/exercises" element={<ExerciseDatabase />} />
                     <Route path="/history" element={<History />} />

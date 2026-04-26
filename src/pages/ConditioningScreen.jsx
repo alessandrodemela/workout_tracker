@@ -27,9 +27,7 @@ export default function ConditioningScreen() {
     // When a timer mode is active, render it filling the full available height
     if (activeTimerMode && activeTimerMode !== 'tabata') {
         return (
-            <div className="h-full flex flex-col">
-                <ConditioningTimer onClose={() => setActiveTimerMode(null)} />
-            </div>
+            <ConditioningTimer onClose={() => setActiveTimerMode(null)} />
         );
     }
 

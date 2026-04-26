@@ -136,7 +136,7 @@ export default function ConditioningTimer({ onClose }) {
     // ─── Config View ───────────────────────────────────────────────────────────
     if (isConfiguring) {
         return (
-            <div className="h-full flex flex-col animate-fade-in w-full">
+            <div className="flex flex-col animate-fade-in w-full pb-10">
                 {/* Fixed header */}
                 <div className="flex items-center gap-4 flex-shrink-0">
                     <button
@@ -309,7 +309,7 @@ export default function ConditioningTimer({ onClose }) {
                 </div>
 
                 {/* Sticky Start button */}
-                <div className="flex-shrink-0 py-4 pb-20 border-t border-[#262626]">
+                <div className="flex-shrink-0 py-4 pb-32 border-t border-[#262626]">
                     {!isSequenceValid ? (
                         <button
                             disabled
