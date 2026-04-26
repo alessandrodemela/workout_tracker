@@ -15,6 +15,7 @@ import ResumeWorkoutBanner from './components/ResumeWorkoutBanner.jsx';
 import { TimerProvider, useTimer } from './context/TimerContext.jsx';
 import ResumeTimerBanner from './components/ResumeTimerBanner.jsx';
 import { AuthProvider, useAuth } from './context/AuthContext.jsx';
+import { GymProvider } from './context/GymContext.jsx';
 import Login from './pages/Login.jsx';
 import UserMenu from './components/UserMenu.jsx';
 import Profile from './pages/Profile.jsx';
@@ -97,13 +98,15 @@ function AppContent() {
 function App() {
     return (
         <AuthProvider>
-            <TimerProvider>
-                <WorkoutProvider>
-                    <Router>
-                        <AppContent />
-                    </Router>
-                </WorkoutProvider>
-            </TimerProvider>
+            <GymProvider>
+                <TimerProvider>
+                    <WorkoutProvider>
+                        <Router>
+                            <AppContent />
+                        </Router>
+                    </WorkoutProvider>
+                </TimerProvider>
+            </GymProvider>
         </AuthProvider>
     );
 }

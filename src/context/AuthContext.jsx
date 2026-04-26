@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../supabaseClient';
+import { seedDefaultGyms } from '../api';
 
 const AuthContext = createContext();
 
@@ -23,6 +24,10 @@ export const AuthProvider = ({ children }) => {
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setUser(session?.user ?? null);
             setLoading(false);
+            // Trigger gym seeding on new sign-up/first sign-in
+            if (_event === 'SIGNED_IN' && session?.user) {
+                seedDefaultGyms(session.user.id);
+            }
         });
 
         return () => subscription.unsubscribe();

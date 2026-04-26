@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useSWR from 'swr';
-import { Dumbbell, Plus, LogOut, Play, ClipboardList } from 'lucide-react';
+import { Dumbbell, Plus, Play, ClipboardList, ChevronDown, Check } from 'lucide-react';
 import { API_URL, fetcher } from '../api';
 import { useAuth } from '../context/AuthContext';
 import CalendarWidget from '../components/CalendarWidget';
 import { useTimer } from '../context/TimerContext';
 import { useWorkout } from '../context/WorkoutContext';
+import { useGym } from '../context/GymContext';
 import ConfirmModal from '../components/ConfirmModal';
 
 export default function HomeDashboard() {
@@ -14,8 +15,10 @@ export default function HomeDashboard() {
     const { phase, stopTimer, activeTimerMode } = useTimer();
     const { isActive: isWorkoutActive } = useWorkout();
     const { user, signOut } = useAuth();
+    const { activeGymId, activeGymName, activeGymIcon, gyms, setActiveGym } = useGym();
 
     const [showSessionPicker, setShowSessionPicker] = useState(false);
+    const [showGymPicker, setShowGymPicker] = useState(false);
 
     const logOptions = [
         { id: 'Standard', label: 'Standard', desc: 'Weightlifting & Strength' },
@@ -51,12 +54,12 @@ export default function HomeDashboard() {
             setPendingAction(() => () => {
                 stopTimer();
                 sessionStorage.removeItem('templateExercises');
-                navigate('/workout', { state: { sessionType: type, isLog } });
+                navigate('/workout', { state: { sessionType: type, isLog, gymId: activeGymId } });
             });
             return;
         }
         sessionStorage.removeItem('templateExercises');
-        navigate('/workout', { state: { sessionType: type, isLog } });
+        navigate('/workout', { state: { sessionType: type, isLog, gymId: activeGymId } });
     };
 
     return (
@@ -69,6 +72,18 @@ export default function HomeDashboard() {
                     </h1>
                 </div>
             </div>
+
+            {/* ─── Gym Context Selector ─────────────────────── */}
+            {gyms && gyms.length > 0 && (
+                <button
+                    onClick={() => setShowGymPicker(true)}
+                    className="flex items-center gap-2 self-start px-4 py-2 rounded-full bg-[#171717] border border-[#262626] hover:border-[#404040] transition-all group"
+                >
+                    <span className="text-base leading-none">{activeGymIcon || '🏋️'}</span>
+                    <span className="text-sm font-black text-white">{activeGymName || 'Select Gym'}</span>
+                    <ChevronDown className="w-3.5 h-3.5 text-[#A3A3A3] group-hover:text-white transition-colors" />
+                </button>
+            )}
 
             <div className="flex gap-4">
                 <button
@@ -83,7 +98,6 @@ export default function HomeDashboard() {
                     </div>
                     <div className="flex flex-col items-start gap-0.5 relative z-10">
                         <span className="text-xl font-black tracking-tight leading-tight">Start Workout</span>
-                        {/* <span className="text-[10px] font-bold text-black/60 uppercase tracking-widest">Log Weightlifting</span> */}
                     </div>
                 </button>
 
@@ -134,6 +148,69 @@ export default function HomeDashboard() {
                                     <div className="w-8 h-8 rounded-full bg-white/10 text-white flex items-center justify-center">
                                         <Plus className="w-4 h-4" />
                                     </div>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Gym Picker Bottom Sheet */}
+            {showGymPicker && (
+                <div
+                    className="fixed inset-0 z-[60] flex items-end justify-center px-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+                    onClick={() => setShowGymPicker(false)}
+                >
+                    <div
+                        className="w-full max-w-lg bg-[#0A0A0A] border border-[#171717] rounded-t-[2.5rem] p-6 flex flex-col gap-4 animate-slide-up shadow-2xl"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <div className="flex justify-between items-center">
+                            <div>
+                                <h2 className="text-xl font-black text-white">Select Gym</h2>
+                                <p className="text-[#A3A3A3] text-xs font-bold mt-0.5">Exercises will be filtered by available equipment</p>
+                            </div>
+                            <button onClick={() => setShowGymPicker(false)} className="w-10 h-10 rounded-full bg-[#171717] flex items-center justify-center text-[#A3A3A3]">
+                                <Plus className="w-6 h-6 rotate-45" />
+                            </button>
+                        </div>
+
+                        <div className="flex flex-col gap-2 max-h-[60vh] overflow-y-auto pb-2">
+                            {/* No gym option */}
+                            <button
+                                onClick={() => { setActiveGym(null); setShowGymPicker(false); }}
+                                className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${!activeGymId
+                                    ? 'border-brand-500 bg-brand-500/10'
+                                    : 'border-[#262626] hover:border-[#404040]'
+                                    }`}
+                            >
+                                <div className="w-10 h-10 rounded-xl bg-[#171717] flex items-center justify-center text-xl">🌍</div>
+                                <div className="flex flex-col flex-1">
+                                    <span className="font-black text-white text-sm">All Exercises</span>
+                                    <span className="text-[10px] text-[#A3A3A3] font-bold uppercase tracking-wider">No equipment filter</span>
+                                </div>
+                                {!activeGymId && <Check className="w-4 h-4 text-brand-500 shrink-0" />}
+                            </button>
+
+                            {(gyms || []).map(gym => (
+                                <button
+                                    key={gym.id}
+                                    onClick={() => { setActiveGym(gym); setShowGymPicker(false); }}
+                                    className={`flex items-center gap-3 p-4 rounded-2xl border transition-all text-left ${activeGymId === gym.id
+                                        ? 'border-brand-500 bg-brand-500/10'
+                                        : 'border-[#262626] hover:border-[#404040]'
+                                        }`}
+                                >
+                                    <div className="w-10 h-10 rounded-xl bg-[#171717] flex items-center justify-center text-xl">
+                                        {gym.icon || '🏋️'}
+                                    </div>
+                                    <div className="flex flex-col flex-1">
+                                        <span className="font-black text-white text-sm">{gym.name}</span>
+                                        {gym.is_default && (
+                                            <span className="text-[10px] text-brand-500 font-bold uppercase tracking-wider">Default</span>
+                                        )}
+                                    </div>
+                                    {activeGymId === gym.id && <Check className="w-4 h-4 text-brand-500 shrink-0" />}
                                 </button>
                             ))}
                         </div>

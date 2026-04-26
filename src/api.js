@@ -479,11 +479,164 @@ function getWeekNumber(d) {
     return weekNo;
 }
 
+// ─── Equipment & Gym APIs ────────────────────────────────────────────────────
+
+export const getEquipment = async () => {
+    const { data, error } = await supabase
+        .schema('workout_tracker')
+        .from('equipment')
+        .select('*')
+        .order('category', { ascending: true })
+        .order('name', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+export const getUserGyms = async (userId) => {
+    const { data, error } = await supabase
+        .schema('workout_tracker')
+        .from('user_gyms')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data || [];
+};
+
+export const createUserGym = async (userId, { name, icon }) => {
+    const { data, error } = await supabase
+        .schema('workout_tracker')
+        .from('user_gyms')
+        .insert([{ user_id: userId, name, icon: icon || '🏋️' }])
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+};
+
+export const updateUserGym = async (gymId, { name, icon }) => {
+    const { error } = await supabase
+        .schema('workout_tracker')
+        .from('user_gyms')
+        .update({ name, icon })
+        .eq('id', gymId);
+    if (error) throw error;
+    return { status: 'success' };
+};
+
+export const deleteUserGym = async (gymId) => {
+    const { error } = await supabase
+        .schema('workout_tracker')
+        .from('user_gyms')
+        .delete()
+        .eq('id', gymId);
+    if (error) throw error;
+    return { status: 'success' };
+};
+
+export const setDefaultGym = async (userId, gymId) => {
+    // Reset all to false first
+    await supabase
+        .schema('workout_tracker')
+        .from('user_gyms')
+        .update({ is_default: false })
+        .eq('user_id', userId);
+    // Set the chosen one to true
+    const { error } = await supabase
+        .schema('workout_tracker')
+        .from('user_gyms')
+        .update({ is_default: true })
+        .eq('id', gymId);
+    if (error) throw error;
+    return { status: 'success' };
+};
+
+export const getGymEquipment = async (gymId) => {
+    const { data, error } = await supabase
+        .schema('workout_tracker')
+        .from('user_gym_equipment')
+        .select('equipment_uuid')
+        .eq('user_gym_id', gymId);
+    if (error) throw error;
+    return (data || []).map(r => r.equipment_uuid);
+};
+
+export const setGymEquipment = async (gymId, equipmentUuids) => {
+    // Replace all: delete existing, then insert new
+    const { error: delError } = await supabase
+        .schema('workout_tracker')
+        .from('user_gym_equipment')
+        .delete()
+        .eq('user_gym_id', gymId);
+    if (delError) throw delError;
+
+    if (equipmentUuids.length === 0) return { status: 'success' };
+
+    const rows = equipmentUuids.map(uuid => ({
+        user_gym_id: gymId,
+        equipment_uuid: uuid
+    }));
+    const { error: insError } = await supabase
+        .schema('workout_tracker')
+        .from('user_gym_equipment')
+        .insert(rows);
+    if (insError) throw insError;
+    return { status: 'success' };
+};
+
+export const getExercisesForGym = async (gymId) => {
+    if (!gymId) return getExercises();
+
+    // Get equipment UUIDs for this gym
+    const { data: gymEq, error: eqErr } = await supabase
+        .schema('workout_tracker')
+        .from('user_gym_equipment')
+        .select('equipment_uuid')
+        .eq('user_gym_id', gymId);
+    if (eqErr) throw eqErr;
+
+    const uuids = (gymEq || []).map(r => r.equipment_uuid);
+    if (uuids.length === 0) return { exercises: [], full_list: [] };
+
+    const { data, error } = await supabase
+        .from('exercises')
+        .select('*')
+        .in('equipment_primary_id', uuids)
+        .order('name', { ascending: true });
+    if (error) throw error;
+
+    return {
+        exercises: (data || []).map(ex => ex.name),
+        full_list: (data || []).map(ex => ({
+            ID_Exercise: ex.id,
+            Exercise_Name: toTitleCase(ex.name),
+            Target_Muscle: toTitleCase(ex.target_muscle),
+            Target_Area: toTitleCase(ex.target_area),
+            Equipment: toTitleCase(ex.equipment),
+            Notes: ex.notes
+        }))
+    };
+};
+
+export const seedDefaultGyms = async (userId) => {
+    try {
+        await supabase.rpc('seed_default_gyms', { p_user_id: userId }, { schema: 'workout_tracker' });
+    } catch (e) {
+        // Non-critical: ignore errors silently (e.g. function not yet deployed)
+        console.warn('seed_default_gyms skipped:', e?.message);
+    }
+};
+
 // SWR Fetcher shim
 export const fetcher = async (key) => {
+    if (key.startsWith('supabase/gym-exercises/')) {
+        const gymId = key.split('/').pop();
+        return getExercisesForGym(gymId);
+    }
     if (key.includes('/exercises')) return getExercises();
     if (key.includes('/templates')) return getTemplates();
     if (key.includes('/workout-history')) return getWorkoutHistory();
+    if (key.includes('/equipment')) return getEquipment();
     if (key.includes('/history')) {
          const parts = key.split('/');
          const exName = parts[parts.length - 1]; 

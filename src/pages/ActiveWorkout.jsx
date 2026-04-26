@@ -9,11 +9,23 @@ import RestTimer from '../components/RestTimer';
 import ConfirmModal from '../components/ConfirmModal';
 import { useWorkout } from '../context/WorkoutContext';
 import { useAuth } from '../context/AuthContext';
+import { useGym } from '../context/GymContext';
 
 export default function ActiveWorkout() {
     const navigate = useNavigate();
     const location = useLocation();
-    const { data: exercisesData, mutate: mutateExercises } = useSWR(`${API_URL}/exercises`, fetcher);
+    const { user } = useAuth();
+
+    // Gym context: prefer gymId from navigation state (set on the dashboard),
+    // fall back to the active gym from context
+    const { activeGymId: contextGymId } = useGym();
+    const gymId = location.state?.gymId ?? contextGymId;
+
+    // Use a gym-specific SWR key so the exercise list is filtered by equipment
+    const exerciseSWRKey = gymId
+        ? `${API_URL}/gym-exercises/${gymId}`
+        : `${API_URL}/exercises`;
+    const { data: exercisesData, mutate: mutateExercises } = useSWR(exerciseSWRKey, fetcher);
     const masterExercises = exercisesData?.exercises || [];
 
     const { 
@@ -23,7 +35,6 @@ export default function ActiveWorkout() {
         secondsElapsed, manualDuration, setManualDuration,
         startWorkout, cancelWorkout, finishWorkout 
     } = useWorkout();
-    const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
     const [isSaved, setIsSaved] = useState(false);
     const [showCancelModal, setShowCancelModal] = useState(false);
