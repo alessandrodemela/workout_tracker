@@ -1,5 +1,6 @@
 // This file is fine, I will just add the plus button
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import useSWR from 'swr';
 import { Search, ChevronRight, Activity, X, Plus, PlusCircle, CheckCircle, Dumbbell, Weight, BicepsFlexed, Cable, Cog, Zap, Circle, Triangle } from 'lucide-react';
 import { API_URL, fetcher, addExercise } from '../api';
@@ -41,6 +42,7 @@ const MUSCLE_TO_AREA_MAP = {
 };
 
 export default function ExerciseDatabase() {
+    const location = useLocation();
     const { isActive, addExercise: addExerciseToWorkout } = useWorkout();
     const { phase, activeTimerMode } = useTimer();
     const isTimerActive = phase !== 'Idle' && phase !== 'Done';
@@ -134,6 +136,15 @@ export default function ExerciseDatabase() {
     };
 
     const { data: exerciseHistoryData } = useSWR(selectedExercise ? `${API_URL}/history/${encodeURIComponent(selectedExercise.Exercise_Name)}` : null, fetcher);
+
+    useEffect(() => {
+        if (location.state?.viewExercise && exercises.length > 0) {
+            const found = exercises.find(e => e.Exercise_Name === location.state.viewExercise);
+            if (found) {
+                setSelectedExercise(found);
+            }
+        }
+    }, [location.state, exercises]);
 
     const handleSelectExercise = (ex) => {
         setSelectedExercise(ex);

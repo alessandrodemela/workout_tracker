@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import useSWR, { mutate } from 'swr';
-import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save, ChevronRight } from 'lucide-react';
+import { Plus, Check, ChevronLeft, AlertTriangle, Search, Save, ChevronRight, Activity } from 'lucide-react';
 import { API_URL, fetcher, mapTemplateExercises, bulkAddExercises, saveWorkoutSession, saveFunctionalSession, markRoutineInactive } from '../api';
 import ExerciseCard from '../components/ExerciseCard';
 import PrimaryButton from '../components/PrimaryButton';
@@ -21,7 +21,8 @@ export default function ActiveWorkout() {
         date, setDate, sessionType, setSessionType, 
         exercises, setExercises, globalNotes, setGlobalNotes, 
         secondsElapsed, manualDuration, setManualDuration,
-        startWorkout, cancelWorkout, finishWorkout 
+        startWorkout, cancelWorkout, finishWorkout,
+        runningTime, setRunningTime, runningDistance, setRunningDistance
     } = useWorkout();
     const { user } = useAuth();
     const [isSaving, setIsSaving] = useState(false);
@@ -226,7 +227,7 @@ export default function ActiveWorkout() {
     const handleFinishWorkout = async () => {
         const routineId = location.state?.routineId;
 
-        if (exercises.length === 0 && !isFunctionalSession) {
+        if (exercises.length === 0 && !isFunctionalSession && sessionType !== 'Corsa') {
             return setAlertConfig({ 
                 isOpen: true, 
                 title: 'Empty Workout', 
@@ -236,11 +237,14 @@ export default function ActiveWorkout() {
 
         // Determine effective duration
         // In log mode: manualDuration holds the value (locked or editable), expressed in minutes
-        const durationSeconds = isLogMode
-            ? (parseInt(manualDuration) || 0) * 60
-            : secondsElapsed;
+        // For Corsa: we use runningTime (in minutes) converted to seconds
+        const durationSeconds = sessionType === 'Corsa'
+            ? (parseInt(runningTime) || 0) * 60
+            : (isLogMode
+                ? (parseInt(manualDuration) || 0) * 60
+                : secondsElapsed);
 
-        if (isLogMode && durationSeconds <= 0) {
+        if ((isLogMode || sessionType === 'Corsa') && durationSeconds <= 0) {
             return setAlertConfig({ 
                 isOpen: true, 
                 title: 'Invalid Duration', 
@@ -270,7 +274,7 @@ export default function ActiveWorkout() {
             }
         });
 
-        if (validRows.length === 0 && !isFunctionalSession) {
+        if (validRows.length === 0 && !isFunctionalSession && sessionType !== 'Corsa') {
             setIsSaving(false);
             return setAlertConfig({ 
                 isOpen: true, 
@@ -280,7 +284,16 @@ export default function ActiveWorkout() {
         }
 
         try {
-            if (isFunctionalSession) {
+            if (sessionType === 'Corsa') {
+                await saveFunctionalSession({
+                    Date: date,
+                    Session_Type: 'Corsa',
+                    Exercise: 'Corsa',
+                    Notes: globalNotes,
+                    Duration_Seconds: durationSeconds || null,
+                    Splits: [{ title: 'Corsa', distance: runningDistance, max_time: runningTime }]
+                }, user.id);
+            } else if (isFunctionalSession) {
                 // Build splits from the exercise list
                 const splits = exercises.map(ex => ({ title: ex.name, distance: '' }));
                 await saveFunctionalSession({
@@ -452,7 +465,7 @@ export default function ActiveWorkout() {
                     </button>
                     <div className="flex flex-col">
                         <h1 className="text-3xl font-black tracking-tight text-white">
-                            {isLogMode ? 'Log Session' : (isFunctionalSession ? 'Conditioning' : 'Workout')}
+                            {isLogMode ? 'Log Session' : (sessionType === 'Corsa' ? 'Corsa' : (isFunctionalSession ? 'Conditioning' : 'Workout'))}
                         </h1>
                         <p className="text-[#A3A3A3] text-sm">
                             {isLogMode ? 'Recording a past session' : 'Log your session details'}
@@ -460,7 +473,7 @@ export default function ActiveWorkout() {
                     </div>
                 </div>
                 {/* Duration: live timer when active, manual input when logging (locked if prefilled from a timer) */}
-                {isLogMode ? (
+                {sessionType !== 'Corsa' && (isLogMode ? (
                     <div className="flex flex-col items-end gap-1">
                         <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">
                             {isDurationLocked ? 'Total Duration' : 'Duration (min)'}
@@ -485,14 +498,15 @@ export default function ActiveWorkout() {
                         <span className="text-[10px] font-black uppercase tracking-widest text-brand-500">Duration</span>
                         <span className="text-xl font-black text-white tabular-nums">{formatDuration(secondsElapsed)}</span>
                     </div>
-                )}
+                ))}
             </div>
 
             <div className="flex gap-3">
                 <input type="date" value={date} onChange={e => setDate(e.target.value)} className="input-field py-3 text-sm flex-1" />
                 <select value={sessionType} onChange={e => setSessionType(e.target.value)} className="input-field py-3 text-sm flex-1 appearance-none">
                     <option value="Standard">Standard</option>
-                    {(isLogMode || ['Functional', 'EMOM', 'AMRAP', 'Circuit'].includes(sessionType)) && (
+                    <option value="Corsa">Corsa</option>
+                    {(isLogMode || ['Functional', 'EMOM', 'AMRAP', 'Circuit', 'Corsa'].includes(sessionType)) && (
                         <>
                             <option value="Functional">Functional</option>
                             <option value="EMOM">EMOM</option>
@@ -500,13 +514,52 @@ export default function ActiveWorkout() {
                             <option value="Circuit">Circuit</option>
                         </>
                     )}
-                    {!['Standard','Functional','EMOM','AMRAP','Circuit'].includes(sessionType) && (
+                    {!['Standard','Functional','EMOM','AMRAP','Circuit','Corsa'].includes(sessionType) && (
                         <option value={sessionType}>{sessionType.length > 1 ? sessionType : `Split ${sessionType}`}</option>
                     )}
                 </select>
             </div>
 
-            {isFunctionalSession ? (
+            {sessionType === 'Corsa' ? (
+                <div className="flex flex-col gap-6">
+                    <div className="card-glass p-6 flex flex-col gap-5 border-[#262626]">
+                        <div className="flex items-center gap-3">
+                            <div className="p-3 bg-brand-500/10 text-brand-500 rounded-2xl">
+                                <Activity className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-black text-white uppercase">Parametri Corsa</h3>
+                                <p className="text-xs text-[#A3A3A3] font-bold">Imposta tempo massimo e distanza</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex flex-col gap-2">
+                                <label className="text-xs font-black uppercase tracking-widest text-[#A3A3A3]">Tempo Massimo (min)</label>
+                                <input
+                                    type="text"
+                                    placeholder="es. 30"
+                                    value={runningTime}
+                                    onChange={e => setRunningTime(e.target.value)}
+                                    className="input-field py-4 text-center font-black text-xl"
+                                />
+                            </div>
+                            <div className="flex flex-col gap-2">
+                                <label className="text-xs font-black uppercase tracking-widest text-[#A3A3A3]">Distanza (km)</label>
+                                <input
+                                    type="text"
+                                    placeholder="es. 5.0"
+                                    value={runningDistance}
+                                    onChange={e => setRunningDistance(e.target.value)}
+                                    className="input-field py-4 text-center font-black text-xl"
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <textarea className="input-field min-h-[120px]" placeholder="Session notes..." value={globalNotes} onChange={e => setGlobalNotes(e.target.value)} />
+                </div>
+            ) : isFunctionalSession ? (
                 <div className="flex flex-col gap-4">
                     {/* Simplified exercise list for functional sessions */}
                     {exercises.length > 0 && (

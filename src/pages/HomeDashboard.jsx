@@ -19,6 +19,7 @@ export default function HomeDashboard() {
 
     const logOptions = [
         { id: 'Standard', label: 'Standard', desc: 'Weightlifting & Strength' },
+        { id: 'Corsa', label: 'Corsa', desc: 'Corsa con parametri' },
         { id: 'Functional', label: 'Functional', desc: 'Mixed conditioning' },
         { id: 'EMOM', label: 'EMOM', desc: 'Every minute on the minute' },
         { id: 'AMRAP', label: 'AMRAP', desc: 'As many rounds as possible' },

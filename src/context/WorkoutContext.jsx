@@ -18,6 +18,8 @@ export function WorkoutProvider({ children }) {
     const [isRestTimerExpanded, setIsRestTimerExpanded] = useState(false);
     // Log mode: if true, timer does NOT tick (retroactive session logging)
     const [isLogMode, setIsLogMode] = useState(false);
+    const [runningTime, setRunningTime] = useState('');
+    const [runningDistance, setRunningDistance] = useState('');
 
     // Use useLayoutEffect so isContextReady is true before the first paint
     useLayoutEffect(() => {
@@ -160,6 +162,8 @@ export function WorkoutProvider({ children }) {
         setSecondsElapsed(0);
         setManualDuration('');
         setGlobalNotes('');
+        setRunningTime('');
+        setRunningDistance('');
         stopRestTimer();
     }, [stopRestTimer]);
 
@@ -171,6 +175,8 @@ export function WorkoutProvider({ children }) {
         setSecondsElapsed(0);
         setManualDuration('');
         setGlobalNotes('');
+        setRunningTime('');
+        setRunningDistance('');
     }, []);
 
     const updateExercises = useCallback((newExercises) => {
@@ -208,13 +214,17 @@ export function WorkoutProvider({ children }) {
         setIsRestTimerExpanded,
         startWorkout,
         cancelWorkout,
-        finishWorkout
+        finishWorkout,
+        runningTime,
+        setRunningTime,
+        runningDistance,
+        setRunningDistance
     }), [
         isActive, isContextReady, isLogMode, isDurationLocked, date, sessionType, exercises, globalNotes,
         secondsElapsed, manualDuration, restTimer, isRestTimerExpanded,
         updateExercises, addExercise, startRestTimer,
         stopRestTimer, addRestTime, startWorkout,
-        cancelWorkout, finishWorkout
+        cancelWorkout, finishWorkout, runningTime, runningDistance
     ]);
 
     return (

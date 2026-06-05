@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Plus, Info, X, MoreHorizontal, FileText, ArrowRightLeft, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import SetRow from './SetRow';
 import { useWorkout } from '../context/WorkoutContext';
 
 export default function ExerciseCard({ exercise, index, onUpdate, onRemove, onSubstitute }) {
-    const [collapsed, setCollapsed] = useState(false);
+    const navigate = useNavigate();
+    const collapsed = !!exercise.collapsed;
     const [showNotes, setShowNotes] = useState(false);
     const [showMenu, setShowMenu] = useState(false);
     const { setIsRestTimerExpanded, restTimer, startRestTimer } = useWorkout();
@@ -49,11 +51,17 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove, onSu
     return (
         <div className="card-glass flex flex-col gap-4">
             <div className="flex justify-between items-center">
-                <div className="flex items-center gap-3 w-3/4">
-                    <span className="flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-brand-500 bg-brand-500/10 px-2 py-1 rounded-full">
+                <div 
+                    onClick={() => navigate('/exercises', { state: { viewExercise: exercise.name } })}
+                    className="flex items-center gap-3 w-3/4 cursor-pointer group/title"
+                >
+                    <span className="flex-shrink-0 text-[10px] font-black uppercase tracking-widest text-brand-500 bg-brand-500/10 px-2 py-1 rounded-full group-hover/title:bg-brand-500 group-hover/title:text-black transition-colors">
                         {index + 1}
                     </span>
-                    <h3 className="text-base font-bold text-white truncate max-w-[200px]">{exercise.name}</h3>
+                    <h3 className="text-base font-bold text-white truncate max-w-[200px] group-hover/title:text-brand-500 transition-colors flex items-center gap-1">
+                        {exercise.name}
+                        <Info className="w-3.5 h-3.5 text-[#525252] group-hover/title:text-brand-500 transition-colors flex-shrink-0" />
+                    </h3>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                     <div className="relative">
@@ -92,7 +100,7 @@ export default function ExerciseCard({ exercise, index, onUpdate, onRemove, onSu
                             )}
                         </AnimatePresence>
                     </div>
-                    <button onClick={() => setCollapsed(!collapsed)} className="p-1 text-[#A3A3A3] hover:text-white">
+                    <button onClick={() => onUpdate({ ...exercise, collapsed: !collapsed })} className="p-1 text-[#A3A3A3] hover:text-white">
                         {collapsed ? <ChevronDown className="w-5 h-5" /> : <ChevronUp className="w-5 h-5" />}
                     </button>
                 </div>

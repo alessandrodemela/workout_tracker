@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library, Play, Dumbbell, Sparkles, Copy, ClipboardCheck, MoreHorizontal, Trash2, Edit3, Zap } from 'lucide-react';
+import { Brain, Trophy, Calendar, Target, Activity, CheckCircle, TrendingUp, X, Flame, Library, Play, Dumbbell, Sparkles, Copy, ClipboardCheck, MoreHorizontal, Trash2, Edit3 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { fetcher, saveUserProfile, saveTemplatesFromAI, updateRoutineMeta, deleteRoutine } from '../api';
 import { buildTrainingSummary, generateWorkoutMock, generateAIPrompt } from '../services/aiService';
@@ -47,8 +47,6 @@ export default function RoutinesPage() {
     const [generatedPrompt, setGeneratedPrompt] = useState('');
     const [importJson, setImportJson] = useState('');
     const [isCopying, setIsCopying] = useState(false);
-    const [isIntentModalOpen, setIsIntentModalOpen] = useState(false);
-    const [generationIntent, setGenerationIntent] = useState('session'); // 'session' | 'week' | 'block'
     const [isSavingProfile, setIsSavingProfile] = useState(false);
     const [profileError, setProfileError] = useState(null);
 
@@ -155,14 +153,8 @@ export default function RoutinesPage() {
     }
 };
 
-    const handleGeneratePrompt = () => {
-        setIsIntentModalOpen(true);
-    };
-
-    const handleConfirmIntent = async (intent) => {
-        setIsIntentModalOpen(false);
-        setGenerationIntent(intent);
-        const prompt = await generateAIPrompt(profile, summary, user.id, intent);
+    const handleGeneratePrompt = async () => {
+        const prompt = await generateAIPrompt(profile, summary, user.id);
         setGeneratedPrompt(prompt);
         setIsPromptModalOpen(true);
     };
@@ -289,13 +281,8 @@ export default function RoutinesPage() {
                             </div>
                         </div>
 
-                        {(() => {
-                            const sliderRoutines = activeRoutines.filter(r => !r.isCompleted);
-                            const completedRoutines = activeRoutines.filter(r => r.isCompleted);
-                            return (
-                                <>
-                                <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
-                            {sliderRoutines.map((group, idx) => (
+                        <div className="flex overflow-x-auto gap-4 pb-4 -mx-6 px-6 snap-x snap-mandatory" style={{ scrollbarWidth: 'none' }}>
+                            {activeRoutines.map((group, idx) => (
                                 <motion.div
                                     key={group.id}
                                     whileTap={{ scale: activeMenuId ? 1 : 0.98 }}
@@ -310,7 +297,7 @@ export default function RoutinesPage() {
                                         group.isRecommended
                                             ? 'bg-brand-500 text-black shadow-brand-900/20'
                                             : 'bg-[#0A0A0A] border border-[#171717] text-white hover:border-brand-500/30'
-                                    } ${
+                                    } ${group.isCompleted ? 'opacity-60 grayscale-[0.5]' : ''} ${
                                         activeMenuId === group.id ? 'z-[60] scale-[1.02] border-brand-500/50' : 'z-10'
                                     }`}
                                 >
@@ -403,24 +390,13 @@ export default function RoutinesPage() {
                                 </motion.div>
                             ))}
 
-                            {/* Empty state when all are completed */}
-                            {sliderRoutines.length === 0 && (
-                                <div className="snap-center flex-shrink-0 w-72 h-44 rounded-[2.5rem] border-2 border-dashed border-[#262626] flex flex-col items-center justify-center text-center p-6 gap-3">
-                                    <CheckCircle className="w-10 h-10 text-brand-500 opacity-50" />
-                                    <div className="flex flex-col gap-1">
-                                        <span className="text-sm font-black text-white uppercase tracking-tighter">All Sessions Completed</span>
-                                        <span className="text-[10px] text-[#525252]">Generate a new block to continue</span>
-                                    </div>
+                            {/* Placeholder if empty */}
+                            {activeRoutines.length === 0 && (
+                                <div className="w-full py-12 text-center text-[#525252] font-black uppercase tracking-widest text-[10px] bg-[#0A0A0A] border-2 border-dashed border-[#171717] rounded-3xl">
+                                    No active routines
                                 </div>
                             )}
                         </div>
-
-                        {completedRoutines.length > 0 && (
-                            <CompletedRoutinesSection routines={completedRoutines} onStart={handleStartStoredRoutine} />
-                        )}
-                        </>
-                        );
-                        })()}
                     </div>
 
                     {/* AI Hub Actions */}
@@ -649,12 +625,6 @@ export default function RoutinesPage() {
                 isDeleting={isRoutineOp}
             />
 
-            <GenerationIntentModal
-                isOpen={isIntentModalOpen}
-                onClose={() => setIsIntentModalOpen(false)}
-                onConfirm={handleConfirmIntent}
-            />
-
             {/* Dismiss menu on outside click */}
             {activeMenuId && (
                 <div className="fixed inset-0 z-40" onClick={() => setActiveMenuId(null)} />
@@ -664,169 +634,6 @@ export default function RoutinesPage() {
 }
 
 // Subcomponents
-
-function CompletedRoutinesSection({ routines, onStart }) {
-    const [isExpanded, setIsExpanded] = useState(false);
-
-    return (
-        <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col gap-2"
-        >
-            <button
-                onClick={() => setIsExpanded(!isExpanded)}
-                className="flex items-center justify-between px-2 py-2 text-[#A3A3A3] hover:text-white transition-colors"
-            >
-                <div className="flex items-center gap-2">
-                    <CheckCircle className="w-4 h-4 text-brand-500" />
-                    <span className="text-sm font-bold uppercase tracking-widest">Completed Sessions</span>
-                </div>
-                <span className="text-[10px] font-black bg-brand-500/10 text-brand-500 px-2 py-1 rounded-full">
-                    {routines.length}
-                </span>
-            </button>
-
-            <AnimatePresence>
-                {isExpanded && (
-                    <motion.div
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                        className="flex flex-col gap-2"
-                    >
-                        {routines.map((group) => (
-                            <motion.button
-                                key={group.id}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => onStart(group)}
-                                className="bg-[#0A0A0A] border border-[#171717] rounded-2xl px-4 py-3 flex items-center justify-between hover:border-brand-500/20 transition-all group"
-                            >
-                                <div className="flex flex-col items-start">
-                                    <span className="text-sm font-black text-white uppercase tracking-tight">{group.split}</span>
-                                    <span className="text-[10px] font-bold text-[#525252]">{group.mesocycle}</span>
-                                </div>
-                                <CheckCircle className="w-4 h-4 text-brand-500 opacity-60" />
-                            </motion.button>
-                        ))}
-                    </motion.div>
-                )}
-            </AnimatePresence>
-        </motion.div>
-    );
-}
-
-function GenerationIntentModal({ isOpen, onClose, onConfirm }) {
-    const [selectedIntent, setSelectedIntent] = useState('session');
-
-    const intents = [
-        {
-            id: 'session',
-            title: 'Next Session',
-            description: 'Single optimized workout for today',
-            icon: Zap
-        },
-        {
-            id: 'week',
-            title: 'Training Week',
-            description: 'Full week split — all sessions',
-            icon: Calendar
-        },
-        {
-            id: 'block',
-            title: 'Mesocycle Block',
-            description: '3–4 week progressive program',
-            icon: TrendingUp
-        }
-    ];
-
-    const handleConfirm = () => {
-        onConfirm(selectedIntent);
-    };
-
-    return (
-        <AnimatePresence>
-            {isOpen && (
-                <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center pointer-events-auto">
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        onClick={onClose}
-                        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
-                    />
-
-                    <motion.div
-                        initial={{ y: '100%', opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: '100%', opacity: 0 }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="w-full max-w-lg bg-[#0A0A0A] rounded-t-3xl sm:rounded-3xl border sm:border-y sm:border-x border-t border-[#171717] overflow-hidden flex flex-col relative z-10 max-h-[90vh]"
-                    >
-                        <div className="flex items-center justify-between p-6 border-b border-[#171717]">
-                            <div>
-                                <h3 className="text-xl font-black tracking-tighter uppercase">Generate Workout</h3>
-                                <p className="text-[10px] font-bold text-brand-500 uppercase tracking-widest mt-0.5">Prompt Scope</p>
-                            </div>
-                            <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-[#171717] flex items-center justify-center text-[#A3A3A3] hover:text-white transition-colors">
-                                <X className="w-5 h-5" />
-                            </button>
-                        </div>
-
-                        <div className="p-6 overflow-y-auto space-y-3">
-                            {intents.map((intent) => {
-                                const isSelected = selectedIntent === intent.id;
-                                const IconComponent = intent.icon;
-                                return (
-                                    <motion.button
-                                        key={intent.id}
-                                        whileTap={{ scale: 0.98 }}
-                                        onClick={() => setSelectedIntent(intent.id)}
-                                        className={`w-full border rounded-3xl p-5 flex items-start gap-4 transition-all ${
-                                            isSelected
-                                                ? 'bg-brand-500/5 border-brand-500'
-                                                : 'bg-[#0A0A0A] border-[#262626] hover:border-[#404040]'
-                                        }`}
-                                    >
-                                        <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${
-                                            isSelected ? 'bg-brand-500/20 text-brand-500' : 'bg-[#171717] text-[#A3A3A3]'
-                                        }`}>
-                                            <IconComponent className="w-6 h-6" />
-                                        </div>
-                                        <div className="text-left flex flex-col">
-                                            <span className={`font-black uppercase tracking-tight ${
-                                                isSelected ? 'text-white' : 'text-[#A3A3A3]'
-                                            }`}>
-                                                {intent.title}
-                                            </span>
-                                            <span className="text-[10px] text-[#525252] font-bold mt-1">{intent.description}</span>
-                                        </div>
-                                    </motion.button>
-                                );
-            })}
-                        </div>
-
-                        <div className="p-6 border-t border-[#171717] flex gap-3">
-                            <button
-                                onClick={onClose}
-                                className="flex-1 h-14 bg-[#171717] text-[#A3A3A3] font-black uppercase tracking-widest rounded-2xl hover:bg-[#262626] transition-colors"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={handleConfirm}
-                                className="flex-1 h-14 bg-brand-500 text-black font-black uppercase tracking-widest rounded-2xl hover:bg-white transition-colors flex items-center justify-center gap-2"
-                            >
-                                <Sparkles className="w-5 h-5" />
-                                Generate Prompt
-                            </button>
-                        </div>
-                    </motion.div>
-                </div>
-            )}
-        </AnimatePresence>
-    );
-}
 
 function NoProfileState({ onOpenModal }) {
     return (

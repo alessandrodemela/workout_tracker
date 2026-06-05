@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { ChevronDown, Clock, Dumbbell, TrendingUp, Calendar, Search } from 'lucide-react';
+import { ChevronDown, Clock, Dumbbell, TrendingUp, Calendar, Search, Activity } from 'lucide-react';
 import { API_URL, fetcher } from '../api';
 
 export default function History({ isEmbedded = false }) {
@@ -275,59 +275,97 @@ export default function History({ isEmbedded = false }) {
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-5 text-[#A3A3A3] text-[13px] font-bold tracking-tight mt-5">
-                            <div className="flex items-center gap-2">
-                                <Clock className={`w-4 h-4 ${session.duration ? 'text-[#D4FF00]' : 'opacity-70'}`} />
-                                <span>{formatTime(session.timeDisplay)}</span>
+                        {session.sessionType === 'Corsa' ? (
+                            <div className="flex items-center gap-5 text-[#A3A3A3] text-[13px] font-bold tracking-tight mt-5">
+                                <div className="flex items-center gap-2">
+                                    <Clock className="w-4 h-4 text-[#D4FF00]" />
+                                    <span>{formatTime(session.timeDisplay)}</span>
+                                </div>
+                                {session.splits?.[0]?.distance && (
+                                    <div className="flex items-center gap-2">
+                                        <Activity className="w-4 h-4 text-[#D4FF00]" />
+                                        <span>{session.splits[0].distance} km</span>
+                                    </div>
+                                )}
                             </div>
-                            <div className="flex items-center gap-2">
-                                <Dumbbell className="w-4 h-4 opacity-70" />
-                                <span>{session.totalSets} sets</span>
+                        ) : (
+                            <div className="flex items-center gap-5 text-[#A3A3A3] text-[13px] font-bold tracking-tight mt-5">
+                                <div className="flex items-center gap-2">
+                                    <Clock className={`w-4 h-4 ${session.duration ? 'text-[#D4FF00]' : 'opacity-70'}`} />
+                                    <span>{formatTime(session.timeDisplay)}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Dumbbell className="w-4 h-4 opacity-70" />
+                                    <span>{session.totalSets} sets</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <TrendingUp className="w-4 h-4 opacity-70" />
+                                    <span>{session.totalVolume.toFixed(1)}t</span>
+                                </div>
                             </div>
-                            <div className="flex items-center gap-2">
-                                <TrendingUp className="w-4 h-4 opacity-70" />
-                                <span>{session.totalVolume.toFixed(1)}t</span>
-                            </div>
-                        </div>
+                        )}
 
                         {expandedSession === session.key && (
                             <div className="mt-8 flex flex-col gap-8 border-t border-[#171717] pt-8 animate-slide-down">
                                 {session.isFunctional ? (
-                                    <div className="flex flex-col gap-4">
-                                        <div className="bg-[#171717] border border-[#262626] p-4 rounded-2xl flex flex-col gap-2">
-                                            <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Session Notes</span>
-                                            <p className="text-sm font-bold text-white whitespace-pre-wrap">{session.notes || 'No notes for this session.'}</p>
-                                        </div>
-                                        {session.splits && Array.isArray(session.splits) && session.splits.length > 0 && (
-                                            <div className="flex flex-col gap-2">
-                                                <h4 className="text-xs font-black uppercase tracking-widest text-[#A3A3A3] mb-2">Splits</h4>
-                                                {session.splits.map((split, sIdx) => {
-                                                    const hasDuration = typeof split.duration === 'number' && !isNaN(split.duration);
-                                                    const m = hasDuration ? Math.floor(split.duration / 60) : 0;
-                                                    const s = hasDuration ? split.duration % 60 : 0;
-                                                    const timeStr = hasDuration ? `${m}:${s < 10 ? '0' + s : s}` : null;
-                                                    return (
-                                                        <div key={sIdx} className="bg-[#171717]/50 border border-[#262626] p-3 rounded-xl flex justify-between items-center group hover:border-[#404040] transition-colors">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-6 h-6 rounded-full bg-[#0A0A0A] border border-[#262626] flex items-center justify-center text-[9px] font-black text-[#A3A3A3]">
-                                                                    {sIdx + 1}
-                                                                </div>
-                                                                <div className="flex flex-col">
-                                                                    <span className="text-xs font-bold text-white">{split.title}</span>
-                                                                    {split.distance && <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">{split.distance}</span>}
-                                                                </div>
-                                                            </div>
-                                                            {timeStr && (
-                                                                <span className="text-sm font-black text-brand-500 tabular-nums">
-                                                                    {timeStr}
-                                                                </span>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
+                                    session.sessionType === 'Corsa' ? (
+                                        <div className="flex flex-col gap-4">
+                                            <div className="grid grid-cols-2 gap-3">
+                                                {session.splits?.[0]?.max_time && (
+                                                    <div className="bg-[#171717] border border-[#262626] p-4 rounded-2xl flex flex-col gap-1">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Max Time</span>
+                                                        <span className="text-lg font-black text-white">{session.splits[0].max_time} min</span>
+                                                    </div>
+                                                )}
+                                                {session.splits?.[0]?.distance && (
+                                                    <div className="bg-[#171717] border border-[#262626] p-4 rounded-2xl flex flex-col gap-1">
+                                                        <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Distance</span>
+                                                        <span className="text-lg font-black text-white">{session.splits[0].distance} km</span>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
-                                    </div>
+                                            <div className="bg-[#171717] border border-[#262626] p-4 rounded-2xl flex flex-col gap-2">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Session Notes</span>
+                                                <p className="text-sm font-bold text-white whitespace-pre-wrap">{session.notes || 'No notes for this session.'}</p>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="flex flex-col gap-4">
+                                            <div className="bg-[#171717] border border-[#262626] p-4 rounded-2xl flex flex-col gap-2">
+                                                <span className="text-[10px] font-black uppercase tracking-widest text-[#A3A3A3]">Session Notes</span>
+                                                <p className="text-sm font-bold text-white whitespace-pre-wrap">{session.notes || 'No notes for this session.'}</p>
+                                            </div>
+                                            {session.splits && Array.isArray(session.splits) && session.splits.length > 0 && (
+                                                <div className="flex flex-col gap-2">
+                                                    <h4 className="text-xs font-black uppercase tracking-widest text-[#A3A3A3] mb-2">Splits</h4>
+                                                    {session.splits.map((split, sIdx) => {
+                                                        const hasDuration = typeof split.duration === 'number' && !isNaN(split.duration);
+                                                        const m = hasDuration ? Math.floor(split.duration / 60) : 0;
+                                                        const s = hasDuration ? split.duration % 60 : 0;
+                                                        const timeStr = hasDuration ? `${m}:${s < 10 ? '0' + s : s}` : null;
+                                                        return (
+                                                            <div key={sIdx} className="bg-[#171717]/50 border border-[#262626] p-3 rounded-xl flex justify-between items-center group hover:border-[#404040] transition-colors">
+                                                                <div className="flex items-center gap-3">
+                                                                    <div className="w-6 h-6 rounded-full bg-[#0A0A0A] border border-[#262626] flex items-center justify-center text-[9px] font-black text-[#A3A3A3]">
+                                                                        {sIdx + 1}
+                                                                    </div>
+                                                                    <div className="flex flex-col">
+                                                                        <span className="text-xs font-bold text-white">{split.title}</span>
+                                                                        {split.distance && <span className="text-[9px] font-bold text-[#A3A3A3] uppercase">{split.distance}</span>}
+                                                                    </div>
+                                                                </div>
+                                                                {timeStr && (
+                                                                    <span className="text-sm font-black text-brand-500 tabular-nums">
+                                                                        {timeStr}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
                                 ) : (
                                     session.exercises.map((ex, idx) => (
                                         <div key={idx} className="flex flex-col gap-3">

@@ -231,7 +231,7 @@ export async function generateWorkoutMock(profile, summary) {
  * Aggregates all context into a single prompt for the user to copy/paste into an AI service.
  * Includes both weightlifting logs and functional/conditioning logs for full training load awareness.
  */
-export async function generateAIPrompt(profile, summary, userId) {
+export async function generateAIPrompt(profile, summary, userId, intent = 'session') {
     if (!profile || !userId) return "Error: Profile and User ID required.";
 
     // 1. Fetch Master Exercise List for ID Mapping
@@ -253,7 +253,7 @@ export async function generateAIPrompt(profile, summary, userId) {
     const { data: logs } = await supabase
         .schema('workout_tracker')
         .from('workout_logs')
-        .select('date, session_type, exercise, sets, reps, kg, rpe')
+        .select('date, session_type, exercise, sets, reps, kg, rpe, block, mesocycle')
         .eq('user_id', userId)
         .gte('date', dateStr)
         .order('date', { ascending: false });
@@ -266,7 +266,7 @@ export async function generateAIPrompt(profile, summary, userId) {
     const { data: functionalLogs } = await supabase
         .schema('workout_tracker')
         .from('functional_logs')
-        .select('date, session_type, exercise, duration_seconds, splits, notes')
+        .select('date, session_type, exercise, duration_seconds, splits, notes, block')
         .eq('user_id', userId)
         .gte('date', dateStr)
         .order('date', { ascending: false });
@@ -282,6 +282,109 @@ export async function generateAIPrompt(profile, summary, userId) {
             return `- ${f.date} [${f.session_type} | ${durationMin}]: ${splitsDetail}${f.notes ? ` — ${f.notes}` : ''}`;
         }).join('\n')
         : "No recent conditioning/circuit logs found.";
+
+    // 5. Compute Week & Session progression based on history logs
+    const allSessions = [];
+    (logs || []).forEach(l => {
+        if (!allSessions.some(s => s.date === l.date)) {
+            allSessions.push({
+                date: l.date,
+                block: l.block,
+                mesocycle: l.mesocycle,
+                type: 'weightlifting'
+            });
+        }
+    });
+    (functionalLogs || []).forEach(f => {
+        if (!allSessions.some(s => s.date === f.date)) {
+            allSessions.push({
+                date: f.date,
+                block: f.block,
+                mesocycle: null,
+                type: 'functional'
+            });
+        }
+    });
+
+    // Sort descending (most recent first)
+    allSessions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    // Helper to get calendar week identifier/start of week (Monday)
+    const getStartOfWeekTime = (dateStr) => {
+        const d = new Date(dateStr);
+        const day = d.getDay();
+        const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+        const monday = new Date(d.setDate(diff));
+        monday.setHours(0, 0, 0, 0);
+        return monday.getTime();
+    };
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const todayWeekStart = getStartOfWeekTime(todayStr);
+
+    let currentWeekNum = 1; // Default
+    let sessionNumberInWeek = 1; // Default
+    let isSameWeekAsLast = false;
+    let progressionInfo = "No recent workouts found. Starting Week 1, Workout #1.";
+
+    if (allSessions.length > 0) {
+        const lastSession = allSessions[0];
+        const lastSessionWeekStart = getStartOfWeekTime(lastSession.date);
+        
+        isSameWeekAsLast = todayWeekStart === lastSessionWeekStart;
+        
+        // Find the last known mesocycle name
+        const lastMesoName = allSessions.find(s => s.mesocycle)?.mesocycle || 'Hypertrophy';
+
+        // Count how many unique workout dates were done in that week
+        const lastWeekSessions = allSessions.filter(s => getStartOfWeekTime(s.date) === lastSessionWeekStart);
+        const uniqueDaysInLastWeek = lastWeekSessions.length;
+
+        // Target days per week
+        const targetDaysPerWeek = profile.training_days_per_week || 4;
+
+        // Extract week number from last mesocycle name if possible (e.g. "Hypertrophy Week 2" -> 2)
+        let extractedWeek = 1;
+        const weekMatch = lastMesoName.match(/(?:Week|Block\s*-\s*Week)\s*(\d+)/i);
+        if (weekMatch) {
+            extractedWeek = parseInt(weekMatch[1], 10);
+        }
+
+        if (isSameWeekAsLast) {
+            sessionNumberInWeek = uniqueDaysInLastWeek + 1;
+            currentWeekNum = extractedWeek;
+            progressionInfo = `STILL IN THE SAME WEEK: Last workout was on ${lastSession.date}. We are on Week ${currentWeekNum} of the program. Workouts completed this week: ${uniqueDaysInLastWeek} of ${targetDaysPerWeek}. The next session to design is Workout #${sessionNumberInWeek}.`;
+        } else {
+            sessionNumberInWeek = 1;
+            currentWeekNum = extractedWeek + 1;
+            progressionInfo = `NEW WEEK STARTED: Last workout was on ${lastSession.date}. We are starting Week ${currentWeekNum} of the program. Workouts completed last week: ${uniqueDaysInLastWeek} of ${targetDaysPerWeek}. The next session to design is Workout #${sessionNumberInWeek} of the new week.`;
+        }
+    }
+
+    // Build mission text based on intent
+    let missionText = '';
+    if (intent === 'session') {
+        missionText = `[MISSION]
+Design the perfect NEXT workout session (Workout #${sessionNumberInWeek} of Week ${currentWeekNum}). Generate 1 single routine optimized for today based on the athlete's recovery status and recent training frequency.`;
+    } else if (intent === 'week') {
+        const daysPerWeek = profile?.training_days_per_week || 4;
+        const preferredSplit = profile?.preferred_split || 'Full Body';
+        missionText = `[MISSION]
+Design a complete training WEEK for this athlete. Generate one routine per training day (${daysPerWeek} sessions total).
+Each routine represents a single session. Use block_number = ${currentWeekNum} for all.
+The mesocycle name must be consistent across all sessions (e.g. "Hypertrophy Week ${currentWeekNum}").
+Distribute muscle groups logically across the week based on the preferred split (${preferredSplit}).`;
+    } else if (intent === 'block') {
+        const sessionsPerWeek = profile?.training_days_per_week || 4;
+        const totalSessions = sessionsPerWeek * 4;
+        missionText = `[MISSION]
+Design a full MESOCYCLE BLOCK of 4 weeks for this athlete starting from Week ${currentWeekNum}.
+Generate ${sessionsPerWeek} sessions x 4 weeks = ${totalSessions} total routines.
+Use block_number to indicate the WEEK (${currentWeekNum}, ${currentWeekNum + 1}, ${currentWeekNum + 2}, ${currentWeekNum + 3}). Format: block_number = ${currentWeekNum} for week 1 of this block, ${currentWeekNum + 1} for week 2, etc.
+The mesocycle name must be consistent and include the week (e.g. "Hypertrophy Block - Week ${currentWeekNum}").
+Apply progressive overload across weeks: increase RPE by 0.5 per week, optionally increase sets by 1 on key lifts in weeks 3-4 of this block.
+Keep exercise selection consistent across weeks for the same split (allow minor variations for deload/recovery).`;
+    }
 
     const prompt = `
 [SYSTEM INSTRUCTIONS]
@@ -320,6 +423,12 @@ ${exercisesContext}
 - Additional Info: ${profile.additional_info || 'None'}
 - Training Concepts: ${profile.notes || 'None'}
 
+[PROGRESSION CONTEXT]
+- Status: ${progressionInfo}
+- Current Program Week: Week ${currentWeekNum}
+- Next Workout Sequence Number in Week: Workout #${sessionNumberInWeek}
+- Is Same Week As Last Workout: ${isSameWeekAsLast}
+
 [TRAINING DATA (Last 30 Days)]
 - Combined Frequency: ${summary.weekly_frequency} sessions/week (weightlifting + conditioning)
 - Avg RPE (Weightlifting): ${summary.avg_rpe}
@@ -342,8 +451,7 @@ ${conditioningText}
 7. RPE PROGRESSION: Scale RPE across sets (e.g., Set 1: RPE 7, Final Set: RPE 9-10/AMRAP).
 8. PERIODIZATION: Be explicit in the "mesocycle" name about which week of the block we are in (e.g., "Meso 1 - Week 1").
 
-[MISSION]
-Design the perfect NEXT workout session(s). You can generate multiple routines if it makes sense for a full split.
+${missionText}
 
 [OUTPUT FORMAT]
 You MUST return a JSON array of workout objects. Each object contains:
